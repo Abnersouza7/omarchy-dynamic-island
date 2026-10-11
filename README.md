@@ -153,7 +153,7 @@ Keyboard while the island has focus: `Esc` close or deny · `Enter`/`Y` allow ·
 
 - Omarchy 4 (the Quickshell-based `omarchy-shell`) on Hyprland
 - Already part of Omarchy: `python3`, `jq`, `wl-clipboard`, `wtype`, `tmux`, `pw-play`,
-  `notify-send`, `xdg-open`, `nautilus`
+  `notify-send`, `xdg-open`, `nautilus`, ImageMagick (`magick`, for album art)
 - Optional:
   - [`cava`](https://github.com/karlstav/cava) (`sudo pacman -S cava`): the ambient light moves with
     the sound; without it the light holds still

@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
+import "../components"
 
 // Picks the player worth showing and keeps its position fresh while visible.
 Item {
@@ -88,6 +89,9 @@ Item {
   readonly property string artist: player ? (player.trackArtist || "") : ""
   readonly property string album: player ? (player.trackAlbum || "") : ""
   readonly property string artUrl: player ? (player.trackArtUrl || "") : ""
+  // The artwork as the shell may decode it (components/ArtCache.qml).
+  readonly property string art: ArtCache.lookup(artUrl, ArtCache.revision)
+  onArtUrlChanged: ArtCache.request(artUrl)
   readonly property string identity: player ? (player.identity || "") : ""
   readonly property real length: player && player.lengthSupported ? player.length : 0
   readonly property real position: player && player.positionSupported ? player.position : 0
@@ -100,14 +104,14 @@ Item {
   // vivid of a few quantized colors, lifted so it stays legible on black.
   ColorQuantizer {
     id: quantizer
-    source: music.artUrl
+    source: music.art
     depth: 3
     rescaleSize: 48
   }
   // No artwork (many video sites, some players): neutral colors. The
   // quantizer keeps its last result when the source goes away, which would
   // carry the previous player's colors over.
-  readonly property bool hasArt: artUrl !== ""
+  readonly property bool hasArt: art !== ""
   readonly property color accent: {
     if (!hasArt) return light ? "#1d1d1f" : "#ffffff"
     var colors = quantizer.colors || []

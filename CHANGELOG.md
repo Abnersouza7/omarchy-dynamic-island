@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.18.2
+
+- Album art and shelf images are no longer decoded in the shell. A media player's artwork URL
+  is untrusted, and Qt's `sourceSize` does not bound a progressive JPEG's coefficient
+  allocation, so a tiny file declaring a huge size could exhaust the whole shell. The new
+  `bin/dynamic-island-art` reads the original in its own process (byte cap; HTTPS/HTTP with a
+  timeout; the URL over stdin), checks the header without decoding (JPEG, PNG, WebP, GIF, BMP,
+  AVIF or HEIC, at most 4096x4096), decodes under ImageMagick limits, a memory ulimit and a
+  timeout, and writes a 256x256 PNG to `$XDG_RUNTIME_DIR/dynamic-island/art`.
+  `components/ArtCache.qml` runs it once per URL; `Art` and the color quantizer only ever load
+  that PNG. Artwork that fails the checks shows the placeholder.
+
 ## 1.18.1
 
 - Liquid Glass: hovering a button, tile, card, session row, shelf item or menu row no longer lays

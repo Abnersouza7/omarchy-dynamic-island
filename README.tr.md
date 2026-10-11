@@ -146,7 +146,7 @@ Klavye (ada odaktayken): `Esc` kapat/reddet · `Enter`/`Y` izin ver · `A` her z
 
 - Omarchy 4 (Quickshell tabanlı `omarchy-shell`) ve Hyprland
 - Omarchy'de zaten var: `python3`, `jq`, `wl-clipboard`, `wtype`, `tmux`, `pw-play`,
-  `notify-send`, `xdg-open`, `nautilus`
+  `notify-send`, `xdg-open`, `nautilus`, ImageMagick (`magick`, albüm kapakları için)
 - İsteğe bağlı:
   - [`cava`](https://github.com/karlstav/cava) (`sudo pacman -S cava`): ambiyans ışığı sesle hareket
     eder; yoksa ışık sabit durur
