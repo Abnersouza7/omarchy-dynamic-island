@@ -1145,6 +1145,19 @@ Item {
       Region { item: island.fullscreenHidden || !leftBubble.shown ? null : leftHit }
     }
 
+    // HyprGlass: the glass goes exactly on the island's rounded shape and
+    // its bubbles (it reads this blur region, ext-background-effect-v1), so
+    // the music's glow around them stays plain light instead of turning
+    // into glass.
+    BackgroundEffect.blurRegion: island.hyprGlassOn && !island.fullscreenHidden ? glassRegion : null
+    Region {
+      id: glassRegion
+      item: shape
+      radius: shape.radius
+      Region { item: rightBubble.shown ? rightHit : null; shape: RegionShape.Ellipse }
+      Region { item: leftBubble.shown ? leftHit : null; shape: RegionShape.Ellipse }
+    }
+
     FocusScope {
       id: focusScope
       anchors.fill: parent
@@ -1264,11 +1277,8 @@ Item {
           readonly property bool here: island.mode === "expanded" ? island.page === "music"
             : island.mode === "compact" && island.primary === "music"
           // Open on the music page, the light moves inside the card instead
-          // (musicBackdrop below), so the outer glow steps aside. With
-          // HyprGlass any visible pixel becomes glass, so the halo would turn
-          // into a smudge of glass around the island: the colors stay inside
-          // the glass instead (LiquidGlass ambL/ambR).
-          opacity: island.ambientOn && here && island.mode !== "expanded" && !island.hyprGlassOn ? 1 : 0
+          // (musicBackdrop below), so the outer glow steps aside.
+          opacity: island.ambientOn && here && island.mode !== "expanded" ? 1 : 0
           visible: opacity > 0.01
           Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
 
@@ -1418,9 +1428,9 @@ Item {
             readonly property bool on: island.cfg("ambient") && expanded
               && island.page === "music" && island.music.available
             readonly property bool moving: on && !Theme.reduceMotion
-            // Over HyprGlass only a wash, so the colors tint the glass
-            // instead of covering it.
-            opacity: on ? (island.hyprGlassOn ? 0.32 : 1) : 0
+            // Over HyprGlass a lighter wash, so the colors tint the glass
+            // and the refraction still shows through.
+            opacity: on ? (island.hyprGlassOn ? 0.6 : 1) : 0
             visible: opacity > 0.005
             Behavior on opacity {
               enabled: musicBackdrop.expanded

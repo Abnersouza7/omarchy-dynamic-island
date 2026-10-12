@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.20.1
+
+- HyprGlass: the island asks for glass exactly on its rounded shape and bubbles (a blur region,
+  `ext-background-effect-v1`; set `mask_mode = "region"` for the layer, see the README), so the
+  music's ambient glow is back around the island and its bubble as plain light instead of being
+  turned into glass. The open music page keeps more of its colors (a 60 % wash).
+
 ## 1.20.0
 
 - Real Liquid Glass with the HyprGlass Hyprland plugin (optional): when it is loaded, Hyprland

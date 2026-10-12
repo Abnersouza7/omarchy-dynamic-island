@@ -93,7 +93,7 @@ Item {
     blur: 14 + level * 6
     spread: -2 + level * 2
     color: Qt.rgba(tint.r, tint.g, tint.b, 0.28 + level * 0.3)
-    opacity: island.ambientOn && bubble.kind === "music" && bubble.shown && !island.hyprGlassOn ? 1 : 0
+    opacity: island.ambientOn && bubble.kind === "music" && bubble.shown ? 1 : 0
     visible: opacity > 0.01
     Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
   }

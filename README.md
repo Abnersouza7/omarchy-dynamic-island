@@ -262,9 +262,9 @@ The compositor does see what is behind the island. With the
 [HyprGlass](https://github.com/hyprnux/hyprglass) Hyprland plugin loaded, Hyprland draws real
 refracting glass (blur, lens, chromatic edges, adaptive tone) behind the island's layer, and the
 island notices it on its own (`bin/dynamic-island-hyprglass status`, checked every 15 s): it drops
-its own smoky / milky tint, painted rim and shadow, keeps the music colors inside the glass (no
-outer glow, which HyprGlass would turn into glass), and switches HyprGlass's dark / light look
-with its appearance. Without the plugin nothing changes.
+its own smoky / milky tint, painted rim and shadow, asks for glass exactly on its rounded shape
+and bubbles (a blur region, `ext-background-effect-v1`) so the music's ambient glow around it
+stays plain light, and switches HyprGlass's dark / light look with its appearance. Without the plugin nothing changes.
 
 HyprGlass only takes layer rules and presets from Hyprland's config, so set it up there, for the
 island's layer alone (otherwise it glasses every layer, the wallpaper included, which is heavy on
@@ -303,8 +303,9 @@ if hl.plugin.hyprglass then
     light = { tint_color = 0xffffff26, brightness = 1.14, adaptive_dim = 0.0, adaptive_boost = 0.55 },
   })
 
-  -- Only this layer gets glass (a whitelist of one).
-  hg.layer("dynamic-island", { preset = "dynamic-island", mask_mode = "alpha", mask_threshold = 0.02 })
+  -- Only this layer gets glass (a whitelist of one), and only on the shape the
+  -- island asks for (its rounded body and bubbles), not on its glows.
+  hg.layer("dynamic-island", { preset = "dynamic-island", mask_mode = "region" })
 end
 ```
 
