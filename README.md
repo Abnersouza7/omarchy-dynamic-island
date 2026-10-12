@@ -256,6 +256,63 @@ values it saved, and Hyprland's own reload resets everything anyway. A program c
 behind its own window, so true refraction of the background is not possible; the lensing is
 painted along the edges.
 
+### Real Liquid Glass with HyprGlass (optional)
+
+The compositor does see what is behind the island. With the
+[HyprGlass](https://github.com/hyprnux/hyprglass) Hyprland plugin loaded, Hyprland draws real
+refracting glass (blur, lens, chromatic edges, adaptive tone) behind the island's layer, and the
+island notices it on its own (`bin/dynamic-island-hyprglass status`, checked every 15 s): it drops
+its own smoky / milky tint, painted rim and shadow, keeps the music colors inside the glass (no
+outer glow, which HyprGlass would turn into glass), and switches HyprGlass's dark / light look
+with its appearance. Without the plugin nothing changes.
+
+HyprGlass only takes layer rules and presets from Hyprland's config, so set it up there, for the
+island's layer alone (otherwise it glasses every layer, the wallpaper included, which is heavy on
+the GPU). For example `~/.config/hypr/hyprglass.lua`, with `require("hypr.hyprglass")` at the end
+of `hyprland.lua` (the release `.so` must match your Hyprland version):
+
+```lua
+-- HyprGlass (github.com/hyprnux/hyprglass): real Liquid Glass, only on the
+-- Dynamic Island. Windows, the bar, the wallpaper and every other layer are
+-- left alone, so the GPU only works on the island's small surface.
+-- To turn it off: remove the require("hypr.hyprglass") line in hyprland.lua.
+
+local so = os.getenv("HOME") .. "/.local/share/hyprglass/hyprglass.so"
+if not hl.plugin.hyprglass then
+  hl.plugin.load(so)
+end
+
+if hl.plugin.hyprglass then
+  local hg = hl.plugin.hyprglass
+
+  hg.config({
+    enabled = false,            -- no glass on windows
+    default_theme = "dark",     -- the island switches this with its appearance
+    layers = { enabled = true, live_resample_fps = 12 },
+  })
+
+  -- Apple-like "pomme", kept light on the GPU (two blur passes). No milky
+  -- tint of its own: light glass lifts dark backdrops for dark text, dark
+  -- glass dims bright ones for light text.
+  hg.preset("dynamic-island", {
+    inherits = "pomme",
+    blur_iterations = 2,
+    contrast = 0.92,
+    saturation = 0.9,
+    dark = { tint_color = 0x10141a33, brightness = 0.78, adaptive_dim = 0.55, adaptive_boost = 0.0 },
+    light = { tint_color = 0xffffff26, brightness = 1.14, adaptive_dim = 0.0, adaptive_boost = 0.55 },
+  })
+
+  -- Only this layer gets glass (a whitelist of one).
+  hg.layer("dynamic-island", { preset = "dynamic-island", mask_mode = "alpha", mask_threshold = 0.02 })
+end
+```
+
+The island's layer surface is only as large as the island can get (its open width plus a margin;
+short while closed, tall while open), so the glass is computed for that area only: about 0.5 ms
+of GPU time per frame closed and 1.4 ms open in our measurements (`hyprctl hyprglass stats` with
+`debug:timers`).
+
 ## Languages
 
 English (default), Spanish, Russian and Turkish. Pick one from the flag button on the Home page

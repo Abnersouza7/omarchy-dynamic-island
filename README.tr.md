@@ -196,6 +196,16 @@ o.bind("SUPER + ALT + N", "Claude: reddet", "omarchy-shell -q dynamicisland deny
 o.bind("SUPER + ALT + T", "Dynamic Island: sayaç", "omarchy-shell -q dynamicisland open timer")
 ```
 
+## Gerçek Liquid Glass (HyprGlass, isteğe bağlı)
+
+[HyprGlass](https://github.com/hyprnux/hyprglass) Hyprland eklentisi yüklüyse arkadaki görüntüyü
+compositor gördüğü için ada gerçek kırılan cam olur (bulanıklık, mercek, renkli kenarlar, uyarlanan
+ton). Ada eklentiyi kendisi algılar; kendi koyu/sütlü tonunu, kenar çizgisini ve gölgesini bırakır,
+müzik renklerini camın içinde tutar ve açık/koyu görünümü HyprGlass'a aktarır. Eklenti yoksa hiçbir
+şey değişmez. HyprGlass'ı Hyprland yapılandırmasında yalnızca `dynamic-island` katmanı için ayarlayın
+(yoksa duvar kâğıdı dahil tüm katmanlara uygular, GPU'yu yorar); örnek yapılandırma
+[İngilizce README'de](README.md#real-liquid-glass-with-hyprglass-optional).
+
 ## Ayarlar
 
 İsteğe bağlı `~/.config/omarchy/dynamic-island.json`; değişiklikler anında uygulanır. Tüm anahtarlar

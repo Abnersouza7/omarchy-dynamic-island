@@ -1,0 +1,37 @@
+#!/bin/bash
+# Real Liquid Glass for the island through the HyprGlass Hyprland plugin
+# (github.com/hyprnux/hyprglass), when it is loaded. The compositor sees what
+# is behind the island, so HyprGlass can bend and refract it; the island
+# itself cannot. This only uses the plugin, it never installs or loads it.
+#
+#   dynamic-island-hyprglass status         prints "active" when usable
+#   dynamic-island-hyprglass on dark|light  glass on the island's layer only
+#
+# HyprGlass applies layer rules and presets only from Hyprland's config, so
+# the glass is set up there (README, "Real Liquid Glass"); this only switches
+# its dark / light look with the island's appearance, at runtime (a Hyprland
+# reload resets it and the island sets it again).
+
+set -u
+command -v hyprctl >/dev/null || exit 0
+
+active() { hyprctl hyprglass status 2>/dev/null | head -1 | grep -q ': active$'; }
+
+case "${1:-}" in
+  status)
+    active && echo active
+    ;;
+  on)
+    active || exit 1
+    theme=dark
+    [[ ${2:-} == light ]] && theme=light
+    # The glass itself is set up in Hyprland's config (layers, the island's
+    # preset with its dark and light variants; see the README). Here only
+    # the appearance follows the island's, live.
+    hyprctl eval 'if hl.plugin.hyprglass then hl.plugin.hyprglass.config({ default_theme = "'"$theme"'" }) end' >/dev/null
+    ;;
+  *)
+    echo "usage: dynamic-island-hyprglass status | on dark|light" >&2
+    exit 2
+    ;;
+esac

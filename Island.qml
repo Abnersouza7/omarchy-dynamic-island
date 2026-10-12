@@ -859,8 +859,36 @@ Item {
   // Hyprland reloads its config (and drops runtime rules) on every save.
   Connections {
     target: Hyprland
-    function onRawEvent(event) { if (event.name === "configreloaded" && island.glassOn) glassSetup.run() }
+    function onRawEvent(event) {
+      if (event.name !== "configreloaded") return
+      if (island.glassOn) glassSetup.run()
+      hyprGlassSetup.run()
+    }
   }
+
+  // HyprGlass (a Hyprland plugin) loaded: the compositor draws real
+  // refracting glass behind the island's layer, and the island drops its
+  // own smoky / milky tint, rim and shadow so nothing covers it. Checked
+  // now and then, so loading or unloading the plugin is picked up live.
+  property bool hyprGlass: false
+  readonly property bool hyprGlassOn: hyprGlass && glassOn
+  onHyprGlassOnChanged: hyprGlassSetup.run()
+  onLightModeChanged: hyprGlassSetup.run()
+  QtObject {
+    id: hyprGlassSetup
+    function run() {
+      if (!island.hyprGlassOn) return
+      hyprGlassProc.command = [island.pluginDir + "/bin/dynamic-island-hyprglass", "on", island.lightMode ? "light" : "dark"]
+      hyprGlassProc.running = true
+    }
+  }
+  Process { id: hyprGlassProc }
+  Process {
+    id: hyprGlassProbe
+    command: [island.pluginDir + "/bin/dynamic-island-hyprglass", "status"]
+    stdout: StdioCollector { onStreamFinished: island.hyprGlass = text.trim() === "active" }
+  }
+  Timer { running: true; repeat: true; triggeredOnStart: true; interval: 15000; onTriggered: hyprGlassProbe.running = true }
 
   property real jelly: 0
   function wobble(amount) {
@@ -952,6 +980,18 @@ Item {
   }
 
   readonly property int expandedW: cfg("expandedWidth")
+
+  // The layer surface is only as big as the island can get: its open width
+  // plus room for the shadow, shake and jelly, and short while closed, tall
+  // only while open (and a moment after, for the closing spring). Anything
+  // that composites the surface (Hyprland's blur, HyprGlass) then works on
+  // that area instead of a full-width 720 px band.
+  readonly property bool expandedNow: mode === "expanded"
+  onExpandedNowChanged: if (!expandedNow) tallHold.restart()
+  Timer { id: tallHold; interval: 900 }
+  readonly property int surfaceW: expandedW + 180
+  readonly property int surfaceH: expandedNow || tallHold.running || !introDone ? 720
+    : Math.max(topY, 0) + Math.max(compactH, 64) + 72
   readonly property bool hovered: hover.hovered
   // Split in two, each half reacts on its own: no whole-island grow or lean;
   // the half under the pointer lights up and hovering opens its agent.
@@ -1085,10 +1125,12 @@ Item {
       for (var i = 0; i < screens.length; i++) if (screens[i].name === want) return screens[i]
       return screens.length ? screens[0] : null
     }
-    anchors { top: true; left: true; right: true }
-    // Tall enough for the biggest page (the agent page with its feed
-    // expanded); the surface is transparent and clicks pass through.
-    implicitHeight: 720
+    // Centred at the top (no left/right anchor). Tall enough for the biggest
+    // page (the agent page with its feed expanded) while open; the surface is
+    // transparent and clicks pass through.
+    anchors { top: true }
+    implicitWidth: Math.min(screen ? screen.width : island.surfaceW, island.surfaceW)
+    implicitHeight: island.surfaceH
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "dynamic-island"
@@ -1096,7 +1138,7 @@ Item {
     WlrLayershell.keyboardFocus: island.mode === "expanded" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // Only the island (and its bubble) take input; everything else on this
-    // full-width surface clicks straight through to the bar and windows.
+    // surface clicks straight through to the bar and windows.
     mask: Region {
       item: island.fullscreenHidden ? null : maskItem
       Region { item: island.fullscreenHidden || !rightBubble.shown ? null : rightHit }
@@ -1222,8 +1264,11 @@ Item {
           readonly property bool here: island.mode === "expanded" ? island.page === "music"
             : island.mode === "compact" && island.primary === "music"
           // Open on the music page, the light moves inside the card instead
-          // (musicBackdrop below), so the outer glow steps aside.
-          opacity: island.ambientOn && here && island.mode !== "expanded" ? 1 : 0
+          // (musicBackdrop below), so the outer glow steps aside. With
+          // HyprGlass any visible pixel becomes glass, so the halo would turn
+          // into a smudge of glass around the island: the colors stay inside
+          // the glass instead (LiquidGlass ambL/ambR).
+          opacity: island.ambientOn && here && island.mode !== "expanded" && !island.hyprGlassOn ? 1 : 0
           visible: opacity > 0.01
           Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
 
@@ -1267,7 +1312,7 @@ Item {
           offset.y: 8
           // Under glass a dark shadow would show through: kept light, and
           // below the blur threshold so it is never frosted.
-          color: Qt.rgba(0, 0, 0, Theme.light ? (island.glassOn ? 0.14 : 0.22) : (island.glassOn ? 0.28 : 0.55))
+          color: Qt.rgba(0, 0, 0, island.hyprGlassOn ? 0 : Theme.light ? (island.glassOn ? 0.14 : 0.22) : (island.glassOn ? 0.28 : 0.55))
           opacity: island.mode === "compact" ? 0 : 1
           Behavior on opacity { NumberAnimation { duration: Theme.ms(260) } }
         }
@@ -1312,13 +1357,17 @@ Item {
           bub1: bubbleAt(leftBubble)
           blend: island.mode === "compact" ? 11 : 4
           // Dark glass is smoky; light glass is clear, a thin milky tint.
-          tint: Theme.light
+          // With HyprGlass the compositor draws the glass: only a trace of
+          // the surface is left, enough for HyprGlass to find its shape.
+          tint: island.hyprGlassOn ? Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.04)
+            : Theme.light
             // Clear while compact; milkier when open, so dark text stays
             // readable even over a dark window behind (no adaptive vibrancy here).
             ? Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Math.max(0.08, Math.min(0.95,
                 (Number(island.cfg("glassOpacityLight")) || 0.26) + (island.mode === "compact" ? 0.10 : 0.48))))
             : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Math.max(0.36, Math.min(0.95, Number(island.cfg("glassOpacity")) || 0.56)))
-          dark: Theme.light
+          dark: Theme.light && !island.hyprGlassOn
+          rim: island.hyprGlassOn ? 0 : 1
           light: island.glassLight
           energy: island.glassEnergy
           ambL: ambient.leftColor
@@ -1369,7 +1418,9 @@ Item {
             readonly property bool on: island.cfg("ambient") && expanded
               && island.page === "music" && island.music.available
             readonly property bool moving: on && !Theme.reduceMotion
-            opacity: on ? 1 : 0
+            // Over HyprGlass only a wash, so the colors tint the glass
+            // instead of covering it.
+            opacity: on ? (island.hyprGlassOn ? 0.32 : 1) : 0
             visible: opacity > 0.005
             Behavior on opacity {
               enabled: musicBackdrop.expanded

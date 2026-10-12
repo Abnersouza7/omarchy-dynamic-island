@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.20.0
+
+- Real Liquid Glass with the HyprGlass Hyprland plugin (optional): when it is loaded, Hyprland
+  draws refracting glass behind the island and the island steps back, with no smoky or milky
+  tint of its own, no painted rim or shadow, and the music colors kept inside the glass instead
+  of an outer glow. Detected live (`bin/dynamic-island-hyprglass`), and its dark / light look
+  follows the island's appearance. Setup in the README.
+- The island's layer surface is no longer a full-width 720 px band: it is the island's open
+  width plus a margin, and short while closed (tall only while open). Less for the compositor to
+  blur or glass every frame, with or without HyprGlass.
+
 ## 1.19.1
 
 - Tab switching with the wheel follows the scroll: each notch (or the same distance on a
