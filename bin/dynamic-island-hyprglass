@@ -18,12 +18,14 @@
 set -u
 command -v hyprctl >/dev/null || exit 0
 
-# Loaded, built for this Hyprland and its shaders ready. ("active" in its
-# own status only means it is drawing something right now.)
+# Loaded, built for this Hyprland, and its shaders did not fail. ("active"
+# in its own status only means it is drawing something right now, and the
+# shaders stay "pending" until the first glass is drawn, so neither can be
+# waited for before turning the glass on.)
 active() {
   local s
   s=$(hyprctl -j hyprglass status 2>/dev/null) || return 1
-  grep -q '"versionCheck": *"match"' <<<"$s" && grep -q '"shaders": *"ready"' <<<"$s"
+  grep -q '"versionCheck": *"match"' <<<"$s" && ! grep -q '"shaders": *"failed"' <<<"$s"
 }
 
 case "${1:-}" in

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.20.3
+
+- Fixed the suggested HyprGlass config, which could keep Hyprland from starting (black screen
+  after login). It loaded the plugin only `if not hl.plugin.hyprglass`; Hyprland re-runs the
+  config after loading a plugin and unloads any config plugin a pass leaves out, so the plugin
+  was loaded and unloaded forever (thousands of config passes in uwsm's 30 s start window, then
+  the session was killed). The plugin is now registered on every pass, and only if its file
+  exists. If you copied the old snippet, replace it (README).
+- HyprGlass detection no longer waits for its shaders to be "ready": they are only compiled at
+  the first glass drawn, so after a fresh start the island never turned the glass on.
+
 ## 1.20.2
 
 - HyprGlass only runs with the Liquid Glass theme: the island turns HyprGlass's layer glass on

@@ -271,7 +271,9 @@ with the island gone nothing asks for glass. Without the plugin nothing changes.
 HyprGlass only takes layer rules and presets from Hyprland's config, so set it up there, for the
 island's layer alone (otherwise it glasses every layer, the wallpaper included, which is heavy on
 the GPU). For example `~/.config/hypr/hyprglass.lua`, with `require("hypr.hyprglass")` at the end
-of `hyprland.lua` (the release `.so` must match your Hyprland version):
+of `hyprland.lua` (the release `.so` must match your Hyprland version). Always call
+`hl.plugin.load` unconditionally: never wrap it in `if not hl.plugin.hyprglass`, which makes
+Hyprland load and unload the plugin in a loop at startup and never reach the desktop.
 
 ```lua
 -- HyprGlass (github.com/hyprnux/hyprglass): real Liquid Glass, only on the
@@ -279,8 +281,15 @@ of `hyprland.lua` (the release `.so` must match your Hyprland version):
 -- left alone, so the GPU only works on the island's small surface.
 -- To turn it off: remove the require("hypr.hyprglass") line in hyprland.lua.
 
+-- Register the plugin on EVERY pass, unconditionally. Hyprland re-runs this
+-- file after loading a plugin and unloads any config plugin a pass leaves
+-- out, so an "only if not loaded yet" guard makes it load, unload, load...
+-- forever and Hyprland never finishes starting (black screen after login).
+-- Skipped when the file is missing, so deleting it can't break startup.
 local so = os.getenv("HOME") .. "/.local/share/hyprglass/hyprglass.so"
-if not hl.plugin.hyprglass then
+local f = io.open(so, "rb")
+if f then
+  f:close()
   hl.plugin.load(so)
 end
 
