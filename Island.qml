@@ -870,6 +870,9 @@ Item {
   // refracting glass behind the island's layer, and the island drops its
   // own smoky / milky tint, rim and shadow so nothing covers it. Checked
   // now and then, so loading or unloading the plugin is picked up live.
+  // HyprGlass's layer glass is off unless the island turns it on: only
+  // while it runs with the Liquid Glass theme. Off again when the theme is
+  // switched off or the island goes away.
   property bool hyprGlass: false
   readonly property bool hyprGlassOn: hyprGlass && glassOn
   onHyprGlassOnChanged: hyprGlassSetup.run()
@@ -877,11 +880,14 @@ Item {
   QtObject {
     id: hyprGlassSetup
     function run() {
-      if (!island.hyprGlassOn) return
-      hyprGlassProc.command = [island.pluginDir + "/bin/dynamic-island-hyprglass", "on", island.lightMode ? "light" : "dark"]
+      if (!island.hyprGlass) return
+      hyprGlassProc.command = island.hyprGlassOn
+        ? [island.pluginDir + "/bin/dynamic-island-hyprglass", "on", island.lightMode ? "light" : "dark"]
+        : [island.pluginDir + "/bin/dynamic-island-hyprglass", "off"]
       hyprGlassProc.running = true
     }
   }
+  Component.onDestruction: if (hyprGlass) Quickshell.execDetached([pluginDir + "/bin/dynamic-island-hyprglass", "off"])
   Process { id: hyprGlassProc }
   Process {
     id: hyprGlassProbe

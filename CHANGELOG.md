@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.20.2
+
+- HyprGlass only runs with the Liquid Glass theme: the island turns HyprGlass's layer glass on
+  while it runs with Liquid Glass and off when the theme is switched off or the island goes away
+  (`dynamic-island-hyprglass on|off`); the suggested Hyprland config now starts it off.
+- Fixed: the plugin was not detected while it had nothing to draw (its status says "inactive"
+  then); detection now checks that it is loaded, matches Hyprland and has its shaders ready.
+
 ## 1.20.1
 
 - HyprGlass: the island asks for glass exactly on its rounded shape and bubbles (a blur region,

@@ -201,7 +201,8 @@ o.bind("SUPER + ALT + T", "Dynamic Island: sayaç", "omarchy-shell -q dynamicisl
 [HyprGlass](https://github.com/hyprnux/hyprglass) Hyprland eklentisi yüklüyse arkadaki görüntüyü
 compositor gördüğü için ada gerçek kırılan cam olur (bulanıklık, mercek, renkli kenarlar, uyarlanan
 ton). Ada eklentiyi kendisi algılar; kendi koyu/sütlü tonunu, kenar çizgisini ve gölgesini bırakır,
-camı sadece kendi yuvarlak şekline ve baloncuklarına istediği için müzik ışıması etrafında normal ışık olarak kalır ve açık/koyu görünümü HyprGlass'a aktarır. Eklenti yoksa hiçbir
+camı sadece kendi yuvarlak şekline ve baloncuklarına istediği için müzik ışıması etrafında normal ışık olarak kalır ve açık/koyu görünümü HyprGlass'a aktarır. HyprGlass yalnızca ada çalışırken
+ve temada Liquid Glass seçiliyken açılır; Liquid Glass'ı kapatınca kapanır. Eklenti yoksa hiçbir
 şey değişmez. HyprGlass'ı Hyprland yapılandırmasında yalnızca `dynamic-island` katmanı için ayarlayın
 (yoksa duvar kâğıdı dahil tüm katmanlara uygular, GPU'yu yorar); örnek yapılandırma
 [İngilizce README'de](README.md#real-liquid-glass-with-hyprglass-optional).

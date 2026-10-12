@@ -264,7 +264,9 @@ refracting glass (blur, lens, chromatic edges, adaptive tone) behind the island'
 island notices it on its own (`bin/dynamic-island-hyprglass status`, checked every 15 s): it drops
 its own smoky / milky tint, painted rim and shadow, asks for glass exactly on its rounded shape
 and bubbles (a blur region, `ext-background-effect-v1`) so the music's ambient glow around it
-stays plain light, and switches HyprGlass's dark / light look with its appearance. Without the plugin nothing changes.
+stays plain light, and switches HyprGlass's dark / light look with its appearance. HyprGlass's layer glass is only
+on while the island runs with the Liquid Glass theme: switching the theme off turns it off, and
+with the island gone nothing asks for glass. Without the plugin nothing changes.
 
 HyprGlass only takes layer rules and presets from Hyprland's config, so set it up there, for the
 island's layer alone (otherwise it glasses every layer, the wallpaper included, which is heavy on
@@ -288,7 +290,9 @@ if hl.plugin.hyprglass then
   hg.config({
     enabled = false,            -- no glass on windows
     default_theme = "dark",     -- the island switches this with its appearance
-    layers = { enabled = true, live_resample_fps = 12 },
+    -- Layer glass starts off: the Dynamic Island turns it on only while it
+    -- runs with its Liquid Glass theme.
+    layers = { enabled = false, live_resample_fps = 12 },
   })
 
   -- Apple-like "pomme", kept light on the GPU (two blur passes). No milky
