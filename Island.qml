@@ -631,6 +631,29 @@ Item {
     page = name
   }
 
+  // Wheel over the open island steps through its tabs: down/right is the
+  // next tab, up/left the previous. Deltas add up so a touchpad swipe moves
+  // one tab, not several, and a short pause follows each step. Parts with a
+  // scroll of their own (the live feed, the timer's minutes) keep it.
+  property real wheelSum: 0
+  Timer { id: wheelRest; interval: 380 }
+  Timer { id: wheelDecay; interval: 220; onTriggered: island.wheelSum = 0 }
+  function wheelTabs(wheel) {
+    if (mode !== "expanded" || composing || page === "permission") return
+    var d = Math.abs(wheel.angleDelta.y) >= Math.abs(wheel.angleDelta.x) ? wheel.angleDelta.y : wheel.angleDelta.x
+    if (d === 0 && wheel.pixelDelta) d = (Math.abs(wheel.pixelDelta.y) >= Math.abs(wheel.pixelDelta.x) ? wheel.pixelDelta.y : wheel.pixelDelta.x) * 4
+    wheelDecay.restart()
+    if (wheelRest.running) { wheelSum = 0; return }
+    wheelSum += d
+    if (Math.abs(wheelSum) < 120) return
+    var i = pages.indexOf(page)
+    var next = i + (wheelSum < 0 ? 1 : -1)
+    wheelSum = 0
+    if (i === -1 || next < 0 || next >= pages.length) return
+    setPage(pages[next])
+    wheelRest.restart()
+  }
+
   function openPage(name, by) {
     peekTimer.stop()
     if (name === "claude") name = "agent"
@@ -1497,7 +1520,7 @@ Item {
               island.openPage(target, "pointer")
             }
             onWheel: wheel => {
-              if (island.mode === "expanded") { wheel.accepted = false; return }
+              if (island.mode === "expanded") { island.wheelTabs(wheel); return }
               // Scroll on the compact island nudges the volume, as on macOS notch apps.
               Quickshell.execDetached(["omarchy-audio-output-volume", wheel.angleDelta.y > 0 ? "+5" : "-5"])
             }

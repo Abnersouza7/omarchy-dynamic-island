@@ -72,6 +72,16 @@ Page {
     boundsBehavior: Flickable.StopAtBounds
     activeFocusOnTab: true
     keyNavigationEnabled: true
+    // Up/down wheel steps the island's tabs as everywhere else on it;
+    // sideways (touchpad) scrolls the files.
+    WheelHandler {
+      onWheel: event => {
+        if (Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y))
+          list.contentX = Math.max(0, Math.min(list.contentWidth - list.width, list.contentX - event.angleDelta.x / 2))
+        else
+          page.island.wheelTabs(event)
+      }
+    }
 
     Accessible.role: Accessible.List
     Accessible.name: I18n.t("Raf, ") + I18n.count(shelf.count, "file")

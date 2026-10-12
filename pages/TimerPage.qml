@@ -155,7 +155,6 @@ Page {
       MouseArea {
         anchors.centerIn: parent
         width: 140; height: parent.height
-        onWheel: wheel => page.pickMinutes = Math.max(1, Math.min(180, page.pickMinutes + (wheel.angleDelta.y > 0 ? 1 : -1)))
         Accessible.role: Accessible.SpinBox
         Accessible.name: I18n.t("Süre ") + I18n.count(page.pickMinutes, "minute")
       }

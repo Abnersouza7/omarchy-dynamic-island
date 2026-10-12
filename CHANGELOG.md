@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.19.0
+
+- Scroll on the open island to switch tabs: down (or right) is the next tab, up (or left) the
+  previous; it stops at the ends. Deltas add up and each step is followed by a short pause, so a
+  touchpad swipe or a fast spin moves one tab at a time. Only while the pointer is on the open
+  island; the compact island still sets the volume, and the agent page's live feed keeps its own
+  scroll. Not while typing a message or answering a permission prompt.
+- Shelf: up/down wheel switches tabs there too; sideways scrolling moves through the files.
+- Timer: the wheel no longer changes the minutes (use − / + or the presets), so it switches tabs
+  like everywhere else.
+
 ## 1.18.2
 
 - Liquid Glass: gentler edge light in both appearances. Buttons, tiles, cards and rows now carry
