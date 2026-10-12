@@ -1,8 +1,8 @@
 import QtQuick
 
 // Liquid Glass body for a surface (button, tile, card, row, popup): its
-// fill, a faint edge, a bright rim along the upper curve and a soft
-// highlight across the top. Drawn only with the Liquid Glass theme, behind
+// fill, a soft highlight across the top and a hairline edge light that is
+// brightest on top and fades smoothly down the sides. Drawn only with the Liquid Glass theme, behind
 // the surface's content.
 //
 // Hover does not add a highlight layer: the glass body swells a few pixels
@@ -54,49 +54,25 @@ Item {
     visible: sheen.takeFill
     color: sheen.fill
   }
-  // Edge all round. Light: a faint shade; dark: a faint light edge.
-  Rectangle {
-    anchors.fill: parent
-    radius: sheen.r
-    color: "transparent"
-    border.width: 1
-    border.color: Theme.light ? Qt.rgba(0, 0, 0, 0.07 * sheen.k) : Qt.rgba(1, 1, 1, 0.09 * sheen.k)
-  }
-  // Highlight across the top.
+  // Highlight across the top: a soft wash that thins out by the middle.
   Rectangle {
     anchors.fill: parent
     radius: sheen.r
     gradient: Gradient {
-      GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, (Theme.light ? 0.55 : 0.10) * sheen.k) }
-      GradientStop { position: 0.45; color: Qt.rgba(1, 1, 1, (Theme.light ? 0.18 : 0.015) * sheen.k) }
-      GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, (Theme.light ? 0.03 : 0.06) * sheen.k) }
+      GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, (Theme.light ? 0.26 : 0.06) * sheen.k) }
+      GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, (Theme.light ? 0.06 : 0.01) * sheen.k) }
+      GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, (Theme.light ? 0.02 : 0.04) * sheen.k) }
     }
   }
-  // Bright rim along the upper curve, in two steps so it fades.
-  Item {
-    width: parent.width
-    height: Math.round(parent.height * 0.5)
-    clip: true
-    Rectangle {
-      width: sheen.width
-      height: sheen.height
-      radius: sheen.r
-      color: "transparent"
-      border.width: 1
-      border.color: Qt.rgba(1, 1, 1, (Theme.light ? 0.6 : 0.12) * sheen.k)
-    }
-  }
-  Item {
-    width: parent.width
-    height: Math.max(2, Math.round(parent.height * 0.22))
-    clip: true
-    Rectangle {
-      width: sheen.width
-      height: sheen.height
-      radius: sheen.r
-      color: "transparent"
-      border.width: 1
-      border.color: Qt.rgba(1, 1, 1, (Theme.light ? 0.9 : 0.20) * sheen.k)
-    }
+  // Edge light: one hairline ring, brightest along the top and easing out
+  // down the sides (shaders/rim.frag), so it never ends in a hard step.
+  ShaderEffect {
+    anchors.fill: parent
+    readonly property size size: Qt.size(width, height)
+    readonly property real radius: sheen.r
+    readonly property color light: Qt.rgba(1, 1, 1, (Theme.light ? 0.5 : 0.17) * sheen.k)
+    readonly property color edge: Theme.light ? Qt.rgba(0, 0, 0, 0.06 * sheen.k) : Qt.rgba(1, 1, 1, 0.05 * sheen.k)
+    readonly property real reach: 0.7
+    fragmentShader: Qt.resolvedUrl("../shaders/rim.frag.qsb")
   }
 }

@@ -2,6 +2,13 @@
 
 ## 1.18.2
 
+- Liquid Glass: gentler edge light in both appearances. Buttons, tiles, cards and rows now carry
+  one hairline ring (`shaders/rim.frag`) that is brightest along the top and fades smoothly down
+  the sides, instead of two clipped bright rims that stopped in hard steps halfway down; the top
+  wash is softer, and the island's own outer rim is wider and dimmer.
+
+## 1.18.2
+
 - Album art and shelf images are no longer decoded in the shell. A media player's artwork URL
   is untrusted, and Qt's `sourceSize` does not bound a progressive JPEG's coefficient
   allocation, so a tiny file declaring a huge size could exhaust the whole shell. The new

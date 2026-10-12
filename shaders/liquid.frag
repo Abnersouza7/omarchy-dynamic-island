@@ -87,10 +87,10 @@ void main() {
     // Lensing: light gathered in a thin band along the edge, strongest where
     // the edge faces the light, with a softer counter-highlight opposite.
     float facing = dot(n, light);
-    float band = 1.0 - smoothstep(0.0, 1.8, inside);
+    float band = 1.0 - smoothstep(0.0, 2.4, inside);
     float halo = 1.0 - smoothstep(0.0, 9.0, inside);
-    float spec = pow(max(facing, 0.0), 3.0) + 0.45 * pow(max(-facing, 0.0), 3.0);
-    float edge = band * (0.10 + 0.90 * spec) * rim;
+    float spec = pow(max(facing, 0.0), 2.0) + 0.3 * pow(max(-facing, 0.0), 2.0);
+    float edge = band * (0.06 + 0.42 * spec) * rim;
     float glow = halo * (0.035 + 0.06 * max(facing, 0.0)) * rim;
     // A broad sheen across the top, as light falls on curved glass.
     float top = clamp(1.0 - inside / 40.0, 0.0, 1.0) * max(-n.y, 0.0) * 0.04;
