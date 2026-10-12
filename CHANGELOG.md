@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.19.1
+
+- Tab switching with the wheel follows the scroll: each notch (or the same distance on a
+  touchpad) is one tab, so a slow scroll moves one at a time and a fast or long one skips
+  several, stopping at the ends. Replaces 1.19.0's one-tab-per-gesture pause.
+
 ## 1.19.0
 
 - Scroll on the open island to switch tabs: down (or right) is the next tab, up (or left) the

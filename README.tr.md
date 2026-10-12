@@ -30,7 +30,7 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
 | **Kompakt** | Boştayken saat; canlı etkinlik varsa solda ve sağda bilgi, ortası temiz |
 | **Baloncuklar** | İkinci canlı etkinlik sağa, üçüncüsü sola ayrılır; her biri kendi başına çalışır. Çift tıklanan baloncuk ortayla yer değiştirir |
 | **Peek** | Şarkı değişti, Claude bitirdi, şarj başladı… için kısa bant |
-| **Genişletilmiş** | Ana · Müzik · Claude · Sayaç · Raf sekmeleri; ada açıkken üzerinde tekerlek ile sekmeler arasında geçilir (aşağı: sonraki, yukarı: önceki) |
+| **Genişletilmiş** | Ana · Müzik · Claude · Sayaç · Raf sekmeleri; ada açıkken üzerinde tekerlek ile sekmeler arasında geçilir (aşağı: sonraki, yukarı: önceki; her çentik bir sekme, hızlı kaydırınca birkaç sekme atlar) |
 | **Uyarılar** | Claude izin isterse ya da süre dolarsa ada kendiliğinden açılır, cevaplanana kadar açık kalır |
 
 - **Liquid Glass** (koyu): ada, yarıları ve baloncukları gerçek bir arka plan bulanıklığı üzerinde

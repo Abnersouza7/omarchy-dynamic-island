@@ -140,7 +140,7 @@ island never takes you to the terminal, for any agent. Answering in the terminal
 | Right-click | Home page |
 | Middle-click on music | Play / pause |
 | Scroll on the compact island | Volume |
-| Scroll on the open island | Next / previous tab (down or right: next). The live feed keeps its own scroll |
+| Scroll on the open island | Next / previous tab (down or right: next), one per notch: scroll faster to skip several. The live feed keeps its own scroll |
 | Drag a file onto it | Opens the shelf |
 | Pointer leaves | Closes after 650 ms (not while an alert is waiting) |
 | Bubble: click | Open that activity |
