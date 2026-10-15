@@ -262,9 +262,12 @@ The compositor does see what is behind the island. With the
 [HyprGlass](https://github.com/hyprnux/hyprglass) Hyprland plugin loaded, Hyprland draws real
 refracting glass (blur, lens, chromatic edges, adaptive tone) behind the island's layer, and the
 island notices it on its own (`bin/dynamic-island-hyprglass status`, checked every 15 s): it drops
-its own smoky / milky tint, painted rim and shadow, asks for glass exactly on its rounded shape
-and bubbles (a blur region, `ext-background-effect-v1`) so the music's ambient glow around it
-stays plain light, and switches HyprGlass's dark / light look with its appearance. HyprGlass's layer glass is only
+its own smoky / milky tint, painted rim and shadow, moves the music's ambient glow to a layer of
+its own (`dynamic-island-glow`, one level below, which HyprGlass leaves alone, so the glow stays
+plain light instead of turning into glass), and switches HyprGlass's dark / light look with its
+appearance. The glass follows the island's anti-aliased shape (`mask_mode = "alpha"` with a
+feather), so its rounded corners stay smooth; a blur region (`mask_mode = "region"`) would be
+made of whole-pixel rectangles and step at the corners. HyprGlass's layer glass is only
 on while the island runs with the Liquid Glass theme: switching the theme off turns it off, and
 with the island gone nothing asks for glass. Without the plugin nothing changes.
 
@@ -313,12 +316,13 @@ if hl.plugin.hyprglass then
     contrast = 0.92,
     saturation = 0.9,
     dark = { tint_color = 0x10141a33, brightness = 0.78, adaptive_dim = 0.55, adaptive_boost = 0.0 },
-    light = { tint_color = 0xffffff26, brightness = 1.14, adaptive_dim = 0.0, adaptive_boost = 0.55 },
+    light = { tint_color = 0xffffff1a, brightness = 1.09, adaptive_dim = 0.0, adaptive_boost = 0.32 },
   })
 
-  -- Only this layer gets glass (a whitelist of one), and only on the shape the
-  -- island asks for (its rounded body and bubbles), not on its glows.
-  hg.layer("dynamic-island", { preset = "dynamic-island", mask_mode = "region" })
+  -- Only this layer gets glass (a whitelist of one), following its visible,
+  -- anti-aliased shape (feathered, so rounded corners stay smooth). The music
+  -- glow is on a separate layer ("dynamic-island-glow") that is not glassed.
+  hg.layer("dynamic-island", { preset = "dynamic-island", mask_mode = "alpha", mask_threshold = 0.01, mask_feather = 0.025 })
 end
 ```
 

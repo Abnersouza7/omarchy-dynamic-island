@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.20.4
+
+- HyprGlass: smooth rounded corners. The glass follows the island's anti-aliased shape again
+  (`mask_mode = "alpha"` with `mask_feather`) instead of a blur region, which HyprGlass draws as
+  whole-pixel rectangles (stepped corners, and a plain box past 64 rectangles). The music's
+  ambient glow, which alpha mode would turn into glass, now has a layer of its own under the
+  island (`dynamic-island-glow`) while HyprGlass is on.
+- Light Liquid Glass with HyprGlass: a light haze instead of the grey milky look (suggested
+  config: about half the white tint and lift), still readable over dark windows.
+
 ## 1.20.3
 
 - Fixed the suggested HyprGlass config, which could keep Hyprland from starting (black screen

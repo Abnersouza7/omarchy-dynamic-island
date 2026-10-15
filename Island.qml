@@ -1120,6 +1120,81 @@ Item {
     }
   }
 
+  // ================================================================ glow
+
+  // HyprGlass turns every visible pixel of the island's layer into glass,
+  // so the music's ambient glow lives on a layer of its own while it is on:
+  // same size and place, one layer level down (Top, under the island's
+  // Overlay) so it always stays beneath it, no input, and not glassed.
+  // Without HyprGlass the glow stays in the island.
+  PanelWindow {
+    id: glowWindow
+    screen: window.screen
+    anchors { top: true }
+    implicitWidth: window.implicitWidth
+    implicitHeight: window.implicitHeight
+    color: "transparent"
+    exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.namespace: "dynamic-island-glow"
+    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    mask: Region {}
+
+    // The island's glow, following the stage (place, scale, fade).
+    Item {
+      visible: island.hyprGlassOn && ambient.visible
+      x: stage.x
+      y: stage.y
+      width: stage.width
+      height: stage.height
+      scale: stage.scale
+      transformOrigin: Item.Top
+      opacity: stage.opacity * ambient.opacity
+
+      RectangularShadow {
+        x: 0
+        width: Math.round(parent.width * 0.7)
+        height: parent.height
+        radius: shape.radius
+        blur: 24 + ambient.level * 10
+        spread: -2 + ambient.level * 3
+        color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, ambient.strength)
+      }
+      RectangularShadow {
+        x: Math.round(parent.width * 0.3)
+        width: parent.width - x
+        height: parent.height
+        radius: shape.radius
+        blur: 24 + ambient.level * 10
+        spread: -2 + ambient.level * 3
+        color: Qt.rgba(ambient.rightColor.r, ambient.rightColor.g, ambient.rightColor.b, ambient.strength)
+      }
+    }
+
+    // A music bubble's glow, following the bubble.
+    Repeater {
+      model: [rightBubble, leftBubble]
+      delegate: RectangularShadow {
+        required property var modelData
+        readonly property var b: modelData
+        readonly property real level: island.audio.available && island.audio.active ? island.audio.level : 0.45
+        readonly property bool on: island.hyprGlassOn && island.ambientOn && b.kind === "music" && b.shown
+        x: b.x
+        y: b.y
+        width: b.width
+        height: b.height
+        radius: width / 2
+        scale: b.bodyScale
+        blur: 14 + level * 6
+        spread: -2 + level * 2
+        color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, 0.28 + level * 0.3)
+        opacity: on ? b.opacity : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
+      }
+    }
+  }
+
   // ================================================================ window
 
   PanelWindow {
@@ -1149,19 +1224,6 @@ Item {
       item: island.fullscreenHidden ? null : maskItem
       Region { item: island.fullscreenHidden || !rightBubble.shown ? null : rightHit }
       Region { item: island.fullscreenHidden || !leftBubble.shown ? null : leftHit }
-    }
-
-    // HyprGlass: the glass goes exactly on the island's rounded shape and
-    // its bubbles (it reads this blur region, ext-background-effect-v1), so
-    // the music's glow around them stays plain light instead of turning
-    // into glass.
-    BackgroundEffect.blurRegion: island.hyprGlassOn && !island.fullscreenHidden ? glassRegion : null
-    Region {
-      id: glassRegion
-      item: shape
-      radius: shape.radius
-      Region { item: rightBubble.shown ? rightHit : null; shape: RegionShape.Ellipse }
-      Region { item: leftBubble.shown ? leftHit : null; shape: RegionShape.Ellipse }
     }
 
     FocusScope {
@@ -1299,7 +1361,10 @@ Item {
           Behavior on leftColor { ColorAnimation { duration: 1500 } }
           Behavior on rightColor { ColorAnimation { duration: 1500 } }
 
+          // With HyprGlass these are drawn on the glow layer instead (see
+          // glowWindow), where HyprGlass cannot turn them into glass.
           RectangularShadow {
+            visible: !island.hyprGlassOn
             x: 0
             width: Math.round(parent.width * 0.7)
             height: parent.height
@@ -1309,6 +1374,7 @@ Item {
             color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, ambient.strength)
           }
           RectangularShadow {
+            visible: !island.hyprGlassOn
             x: Math.round(parent.width * 0.3)
             width: parent.width - x
             height: parent.height
