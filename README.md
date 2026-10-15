@@ -10,6 +10,8 @@ right from the island.
 
 ![Dynamic Island](preview.png)
 
+<p align="center"><a href="docs/promo.mp4"><img src="docs/promo.webp" width="800" alt="Dynamic Island promo: the island springs open, its pages and its four looks"></a><br><sub>Click for the full-quality video (MP4, 32 s). Made with <a href="https://www.remotion.dev">Remotion</a>.</sub></p>
+
 ## Screenshots
 
 **Four looks**: Dark or Light, each solid or Liquid Glass (switch from the button next to the flag on Home).

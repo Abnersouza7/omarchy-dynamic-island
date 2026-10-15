@@ -9,6 +9,8 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
 
 ![Dynamic Island](preview.png)
 
+<p align="center"><a href="docs/promo.mp4"><img src="docs/promo.webp" width="800" alt="Dynamic Island tanıtımı: ada açılıyor, sayfaları ve dört görünümü"></a><br><sub>Tam kaliteli video için tıklayın (MP4, 32 sn). <a href="https://www.remotion.dev">Remotion</a> ile yapıldı.</sub></p>
+
 ## Ekran görüntüleri
 
 **Dört görünüm**: Koyu ya da Açık, her biri düz ya da Liquid Glass (Ana sayfada bayrağın yanındaki düğmeden).

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.20.6
+
+- Artwork cache bounded against a media player that sends many large artwork URLs: at most 8
+  URLs and 32 Mi characters wait for the helper (oldest dropped first; the playing track's art is
+  always the newest), a URL longer than the helper would ever read (22 Mi characters, its 16 MiB
+  source cap as base64) is refused before it is queued, and results are keyed by a short hash
+  instead of the URL itself.
+- A promo video in the README (animated preview, full MP4 in `docs/`), made with Remotion.
+
 ## 1.20.5
 
 - New README screenshots and preview: every page in all four looks (Dark, Light, and both with
