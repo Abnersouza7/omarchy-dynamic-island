@@ -12,17 +12,71 @@ right from the island.
 
 ## Screenshots
 
-**Closed**: the agent at work in the middle, music and a timer split off into bubbles.
+**Four looks**: Dark or Light, each solid or Liquid Glass (switch from the button next to the flag on Home).
 
-<p align="center"><img src="docs/screenshots/compact.png" width="560" alt="Closed island with music and timer bubbles"></p>
+| Dark | Light |
+|---|---|
+| <img src="docs/screenshots/dark/home.png" alt="Dark"> | <img src="docs/screenshots/light/home.png" alt="Light"> |
+| **Dark · Liquid Glass** | **Light · Liquid Glass** |
+| <img src="docs/screenshots/dark-glass/home.png" alt="Dark · Liquid Glass"> | <img src="docs/screenshots/light-glass/home.png" alt="Light · Liquid Glass"> |
+
+**Closed**, in each look: music in the middle, a timer and the agent split off into bubbles.
+
+<p align="center"><img src="docs/screenshots/dark/compact.png" width="560" alt="Dark"></p>
+<p align="center"><img src="docs/screenshots/light/compact.png" width="560" alt="Light"></p>
+<p align="center"><img src="docs/screenshots/dark-glass/compact.png" width="560" alt="Dark · Liquid Glass"></p>
+<p align="center"><img src="docs/screenshots/light-glass/compact.png" width="560" alt="Light · Liquid Glass"></p>
+
+**Pages** (Dark · Liquid Glass, the default):
 
 | Home | Music |
 |---|---|
-| <img src="docs/screenshots/home.png" alt="Home page: clock, battery, agent usage rings, shortcuts"> | <img src="docs/screenshots/music.png" alt="Music page with artwork-colored backdrop and player picker"> |
-| **Agent**: sessions, live feed, message box | **Permission**: allow / always / deny from the island |
-| <img src="docs/screenshots/agent.png" alt="Agent page with two Claude Code sessions and the live feed"> | <img src="docs/screenshots/permission.png" alt="Permission request for writing notes.md"> |
+| <img src="docs/screenshots/dark-glass/home.png" alt="Home page: clock, battery, agent usage, shortcuts"> | <img src="docs/screenshots/dark-glass/music.png" alt="Music page with artwork-colored backdrop"> |
+| **Agent: sessions, live feed, message box** | **Permission: allow / always / deny** |
+| <img src="docs/screenshots/dark-glass/agent.png" alt="Agent page with two Claude Code sessions and the live feed"> | <img src="docs/screenshots/dark-glass/permission.png" alt="Permission request for writing notes.md"> |
 | **Timer** | **Shelf** |
-| <img src="docs/screenshots/timer.png" alt="Timer page counting down"> | <img src="docs/screenshots/shelf.png" alt="Shelf with four files"> |
+| <img src="docs/screenshots/dark-glass/timer.png" alt="Timer counting down"> | <img src="docs/screenshots/dark-glass/shelf.png" alt="Shelf with four files"> |
+
+Liquid Glass shots are taken with the optional [HyprGlass](#real-liquid-glass-with-hyprglass-optional) plugin loaded; without it the glass is frosted rather than refracting.
+
+<details>
+<summary>All pages: Dark</summary>
+
+| Home | Music |
+|---|---|
+| <img src="docs/screenshots/dark/home.png" alt="Home page: clock, battery, agent usage, shortcuts"> | <img src="docs/screenshots/dark/music.png" alt="Music page with artwork-colored backdrop"> |
+| **Agent: sessions, live feed, message box** | **Permission: allow / always / deny** |
+| <img src="docs/screenshots/dark/agent.png" alt="Agent page with two Claude Code sessions and the live feed"> | <img src="docs/screenshots/dark/permission.png" alt="Permission request for writing notes.md"> |
+| **Timer** | **Shelf** |
+| <img src="docs/screenshots/dark/timer.png" alt="Timer counting down"> | <img src="docs/screenshots/dark/shelf.png" alt="Shelf with four files"> |
+
+</details>
+
+<details>
+<summary>All pages: Light</summary>
+
+| Home | Music |
+|---|---|
+| <img src="docs/screenshots/light/home.png" alt="Home page: clock, battery, agent usage, shortcuts"> | <img src="docs/screenshots/light/music.png" alt="Music page with artwork-colored backdrop"> |
+| **Agent: sessions, live feed, message box** | **Permission: allow / always / deny** |
+| <img src="docs/screenshots/light/agent.png" alt="Agent page with two Claude Code sessions and the live feed"> | <img src="docs/screenshots/light/permission.png" alt="Permission request for writing notes.md"> |
+| **Timer** | **Shelf** |
+| <img src="docs/screenshots/light/timer.png" alt="Timer counting down"> | <img src="docs/screenshots/light/shelf.png" alt="Shelf with four files"> |
+
+</details>
+
+<details>
+<summary>All pages: Light · Liquid Glass</summary>
+
+| Home | Music |
+|---|---|
+| <img src="docs/screenshots/light-glass/home.png" alt="Home page: clock, battery, agent usage, shortcuts"> | <img src="docs/screenshots/light-glass/music.png" alt="Music page with artwork-colored backdrop"> |
+| **Agent: sessions, live feed, message box** | **Permission: allow / always / deny** |
+| <img src="docs/screenshots/light-glass/agent.png" alt="Agent page with two Claude Code sessions and the live feed"> | <img src="docs/screenshots/light-glass/permission.png" alt="Permission request for writing notes.md"> |
+| **Timer** | **Shelf** |
+| <img src="docs/screenshots/light-glass/timer.png" alt="Timer counting down"> | <img src="docs/screenshots/light-glass/shelf.png" alt="Shelf with four files"> |
+
+</details>
 
 ## Features
 

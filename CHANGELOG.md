@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.20.5
+
+- New README screenshots and preview: every page in all four looks (Dark, Light, and both with
+  Liquid Glass), on a clean wallpaper, with demo sessions, a demo track and demo files.
+
 ## 1.20.4
 
 - HyprGlass: smooth rounded corners. The glass follows the island's anti-aliased shape again

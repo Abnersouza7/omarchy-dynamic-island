@@ -11,17 +11,71 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
 
 ## Ekran görüntüleri
 
-**Kapalı hali**: ortada çalışan ajan, müzik ve sayaç yanlarda baloncuk olarak.
+**Dört görünüm**: Koyu ya da Açık, her biri düz ya da Liquid Glass (Ana sayfada bayrağın yanındaki düğmeden).
 
-<p align="center"><img src="docs/screenshots/compact.png" width="560" alt="Müzik ve sayaç baloncuklarıyla kapalı ada"></p>
+| Koyu | Açık |
+|---|---|
+| <img src="docs/screenshots/dark/home.png" alt="Koyu"> | <img src="docs/screenshots/light/home.png" alt="Açık"> |
+| **Koyu · Liquid Glass** | **Açık · Liquid Glass** |
+| <img src="docs/screenshots/dark-glass/home.png" alt="Koyu · Liquid Glass"> | <img src="docs/screenshots/light-glass/home.png" alt="Açık · Liquid Glass"> |
+
+**Kapalı**, her görünümde: ortada müzik, sayaç ve ajan baloncuklara ayrılmış.
+
+<p align="center"><img src="docs/screenshots/dark/compact.png" width="560" alt="Koyu"></p>
+<p align="center"><img src="docs/screenshots/light/compact.png" width="560" alt="Açık"></p>
+<p align="center"><img src="docs/screenshots/dark-glass/compact.png" width="560" alt="Koyu · Liquid Glass"></p>
+<p align="center"><img src="docs/screenshots/light-glass/compact.png" width="560" alt="Açık · Liquid Glass"></p>
+
+**Sayfalar** (varsayılan görünüm, Koyu · Liquid Glass):
 
 | Ana | Müzik |
 |---|---|
-| <img src="docs/screenshots/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/music.png" alt="Müzik sayfası"> |
-| **Ajan**: oturumlar, canlı akış, mesaj kutusu | **İzin**: adadan izin ver / her zaman / reddet |
-| <img src="docs/screenshots/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/permission.png" alt="İzin isteği"> |
+| <img src="docs/screenshots/dark-glass/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/dark-glass/music.png" alt="Müzik sayfası"> |
+| **Ajan: oturumlar, canlı akış, mesaj kutusu** | **İzin: izin ver / her zaman / reddet** |
+| <img src="docs/screenshots/dark-glass/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/dark-glass/permission.png" alt="İzin isteği"> |
 | **Sayaç** | **Raf** |
-| <img src="docs/screenshots/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/shelf.png" alt="Raf"> |
+| <img src="docs/screenshots/dark-glass/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/dark-glass/shelf.png" alt="Raf"> |
+
+Liquid Glass görüntüleri isteğe bağlı [HyprGlass](README.md#real-liquid-glass-with-hyprglass-optional) eklentisi yüklüyken çekildi; eklenti olmadan cam kırılmak yerine buzlu görünür.
+
+<details>
+<summary>Tüm sayfalar: Koyu</summary>
+
+| Ana | Müzik |
+|---|---|
+| <img src="docs/screenshots/dark/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/dark/music.png" alt="Müzik sayfası"> |
+| **Ajan: oturumlar, canlı akış, mesaj kutusu** | **İzin: izin ver / her zaman / reddet** |
+| <img src="docs/screenshots/dark/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/dark/permission.png" alt="İzin isteği"> |
+| **Sayaç** | **Raf** |
+| <img src="docs/screenshots/dark/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/dark/shelf.png" alt="Raf"> |
+
+</details>
+
+<details>
+<summary>Tüm sayfalar: Açık</summary>
+
+| Ana | Müzik |
+|---|---|
+| <img src="docs/screenshots/light/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/light/music.png" alt="Müzik sayfası"> |
+| **Ajan: oturumlar, canlı akış, mesaj kutusu** | **İzin: izin ver / her zaman / reddet** |
+| <img src="docs/screenshots/light/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/light/permission.png" alt="İzin isteği"> |
+| **Sayaç** | **Raf** |
+| <img src="docs/screenshots/light/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/light/shelf.png" alt="Raf"> |
+
+</details>
+
+<details>
+<summary>Tüm sayfalar: Açık · Liquid Glass</summary>
+
+| Ana | Müzik |
+|---|---|
+| <img src="docs/screenshots/light-glass/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/light-glass/music.png" alt="Müzik sayfası"> |
+| **Ajan: oturumlar, canlı akış, mesaj kutusu** | **İzin: izin ver / her zaman / reddet** |
+| <img src="docs/screenshots/light-glass/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/light-glass/permission.png" alt="İzin isteği"> |
+| **Sayaç** | **Raf** |
+| <img src="docs/screenshots/light-glass/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/light-glass/shelf.png" alt="Raf"> |
+
+</details>
 
 ## Özellikler
 
