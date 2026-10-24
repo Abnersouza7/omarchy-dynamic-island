@@ -34,8 +34,10 @@ import "components/Agents.js" as Agents
 //                                            (peekOnAgentDone), ✓ in compact for 8 s
 //   agent turn failed (StopFailure)          "<agent> stopped on an error" banner
 //   agent waiting for you (question,         "<agent> is waiting for you" banner,
-//   elicitation, idle prompt) / Gemini       pulsing dot in compact until you act
-//   permission in its terminal
+//   elicitation, idle prompt)                pulsing dot in compact until you act
+//   Antigravity at its permission prompt     same as a permission request: the
+//                                            island opens on it; answers are
+//                                            pressed as keys in agy's terminal
 //   agent turn interrupted / quiet           no banner; compact falls back
 //   timer finished                           opens on the timer, shakes, chimes
 //   new track (settled 1.5 s, playing)       banner (peekOnTrackChange)
@@ -53,9 +55,11 @@ import "components/Agents.js" as Agents
 //                                            then drops in as a circle and
 //                                            springs open (intro)
 //   files on the shelf                       shelf bubble (count + fill ring);
-//                                            clicking it shelves the clipboard
-//   pointer hover / leave                    opens after hoverDelay / closes
-//                                            after collapseDelay
+//                                            Ctrl+V on the open shelf shelves
+//                                            the clipboard
+//   pointer hover                            grows slightly (opens only with
+//                                            hoverExpand); click opens
+//   pointer leaves (opened by pointer)       closes after collapseDelay
 //
 //   Agent session states and the events behind them are documented in
 //   services/AgentBridge.qml.
@@ -76,7 +80,7 @@ Item {
   // ================================================================ config
 
   readonly property var defaults: ({
-    hoverExpand: true,
+    hoverExpand: false,     // true: also open on hover (default: hover only grows; click opens)
     hoverDelay: 380,
     collapseDelay: 650,
     reduceMotion: false,
@@ -88,12 +92,17 @@ Item {
     compactHeight: "auto",
     topOffset: "auto",
     expandedWidth: 500,
-    color: "#000000",
+    appearance: "dark",     // dark | light
+    color: "#000000",       // island color, dark appearance
+    lightColor: "#ffffff",  // island color, light appearance
+    glassOpacityLight: 0.26, // how milky the light glass is (0..1; low = clear)
     screen: "",
     peekOnTrackChange: true,
     peekOnAgentDone: true,
     autoExpandPermission: true,
     hideOnFullscreen: true,
+    glass: true,            // Liquid Glass: translucent, blurred, light on the edges, liquid merges
+    glassOpacity: 0.56,     // how dark the glass is (0..1)
     ambient: true,          // artwork-colored glow around the island while music plays
     ambientAudio: true,     // …breathing with the sound (needs cava)
     shortcuts: [],
@@ -138,7 +147,10 @@ Item {
     userConfig = next
     configFile.setText(JSON.stringify(next, null, 2) + "\n")
   }
-  Binding { target: Theme; property: "bg"; value: island.cfg("color") }
+  readonly property bool lightMode: cfg("appearance") === "light"
+  Binding { target: Theme; property: "light"; value: island.lightMode }
+  Binding { target: Theme; property: "bg"; value: island.lightMode ? island.cfg("lightColor") : island.cfg("color") }
+  Binding { target: Theme; property: "glass"; value: island.glassOn }
 
   // Text follows the Omarchy system font (omarchy font set …).
   Process {
@@ -160,6 +172,100 @@ Item {
     onFileChanged: reload()
     onLoaded: island.omarchyAgent = text().trim()
   }
+  // ---- agents installed here (the ones the island connects to), for the
+  // usage cards on Home.
+  property var installedAgents: []
+  Process {
+    id: agentProbe
+    running: true
+    command: ["sh", "-c", "for a; do id=${a%%:*}; bin=${a#*:}; command -v \"$bin\" >/dev/null 2>&1 && echo \"$id\"; done", "sh"]
+      .concat(Agents.connectable.map(id => id + ":" + Agents.get(id).bin))
+    stdout: StdioCollector { onStreamFinished: island.installedAgents = text.split("\n").filter(l => l !== "") }
+  }
+  Timer { interval: 120000; repeat: true; running: true; onTriggered: if (!agentProbe.running) agentProbe.running = true }
+  // Usage cards: running agents first (most urgent first), then the other
+  // installed ones, then the island's own agent if it is neither.
+  readonly property var usageAgents: {
+    var out = runningAgents.slice()
+    installedAgents.forEach(id => { if (out.indexOf(id) === -1) out.push(id) })
+    if (agentId && out.indexOf(agentId) === -1) out.push(agentId)
+    return out
+  }
+
+  // ---- agents that are running right now (a live session), most urgent
+  // first: waiting on you, then working, then idle. They drive the AI tab's
+  // label, the agent bar on its page and the split compact island.
+  readonly property var runningAgents: {
+    void agents.revision
+    var rank = id => {
+      var mine = agents.sessionList.filter(x => x.agent === id)
+      if (agents.pending.some(r => r.agent === id) || mine.some(x => agents.needsYou(x))) return 0
+      if (mine.some(x => agents.isBusy(x))) return 1
+      return 2
+    }
+    var ids = []
+    agents.sessionList.forEach(x => { if (x.agent && ids.indexOf(x.agent) === -1) ids.push(x.agent) })
+    return ids.sort((a, b) => rank(a) - rank(b))
+  }
+  // Agents with a turn in progress (or waiting on you): two or more split
+  // the compact island in half, one agent per side.
+  readonly property var workingAgents: {
+    void agents.revision
+    return runningAgents.filter(id => agents.pending.some(r => r.agent === id)
+      || agents.sessionList.some(x => x.agent === id && (agents.isBusy(x) || agents.needsYou(x))))
+  }
+  readonly property bool splitIsland: workingAgents.length >= 2 && primary === "agent"
+  // Which agent sits on which half. An agent keeps its side for as long as
+  // it works; a newcomer takes the free side. Never more than two.
+  property var splitOrder: []
+  onWorkingAgentsChanged: {
+    var keep = splitOrder.filter(id => workingAgents.indexOf(id) !== -1)
+    workingAgents.forEach(id => { if (keep.indexOf(id) === -1) keep.push(id) })
+    keep = keep.slice(0, 2)
+    if (JSON.stringify(keep) !== JSON.stringify(splitOrder)) splitOrder = keep
+  }
+  // The gap between the two halves springs open and closed; while it is
+  // open the island is drawn as two pills (CompactView's halves) instead of
+  // one shape. Only in compact: opening the island always starts whole.
+  property real splitGap: splitIsland && mode === "compact" && introDone ? 8 : 0
+  Behavior on splitGap {
+    enabled: !Theme.reduceMotion
+    SpringAnimation { spring: 4; damping: 0.38; epsilon: 0.05 }
+  }
+  readonly property bool halvesOn: mode === "compact" && (splitIsland || splitGap > 0.05)
+  // The agent the AI page shows: the one picked in its bar while it still
+  // runs, else the most urgent running one, else the island's agent.
+  property string viewAgent: ""
+  onModeChanged: {
+    if (mode === "compact") viewAgent = ""
+    glassModeMotion()
+  }
+  // The agents the AI page's bar offers: the running ones; with none
+  // running, every installed agent (so you can still pick one, see its
+  // usage, connect it or start a session of it).
+  // Every installed agent stays reachable: running ones first (most urgent
+  // first), then the rest.
+  readonly property var barAgents: {
+    var out = runningAgents.slice()
+    usageAgents.forEach(id => { if (out.indexOf(id) === -1) out.push(id) })
+    return out
+  }
+  // Which agent the AI page shows. Nobody is favoured:
+  //   the one you picked in its bar or overview (until the island closes);
+  //   else the agent that is working or waiting on you (most urgent);
+  //   else the only agent with a live session;
+  //   else "" — the neutral overview of every agent.
+  readonly property string pageAgent: {
+    if (viewAgent && barAgents.indexOf(viewAgent) !== -1) return viewAgent
+    if (workingAgents.length) return workingAgents[0]
+    if (runningAgents.length === 1) return runningAgents[0]
+    return ""
+  }
+  function showAgent(id) {
+    viewAgent = id || ""
+    openPage(agents.pending.some(r => r.agent === id) ? "permission" : "agent", "pointer")
+  }
+
   // The agent Omarchy launches by default shapes the agent page: its name,
   // mark, colors and spinner. Sessions of other agents keep their own look.
   readonly property var agent: profile(agentId)
@@ -174,6 +280,9 @@ Item {
     for (var k in p) out[k] = p[k]
     out.color = Qt.lighter(p.color, 1.0)
     out.glow = Qt.lighter(p.glow, 1.0)
+    // Near-white brand colors (Codex, OpenCode…) vanish on a white island:
+    // in light mode they turn near-black.
+    if (Theme.light && out.color.hslLightness > 0.82) { out.color = "#1d1d1f"; out.glow = "#6e6e73" }
     return out
   }
   function logoFor(id) {
@@ -263,7 +372,7 @@ Item {
     if (action === "stopwatch") { timer.startStopwatch(); openPage("timer"); return }
     if (action === "timer") { timer.startCountdown(Number(item.seconds) || 300); openPage("timer"); return }
     if (action.indexOf("page:") === 0) { openPage(action.substring(5)); return }
-    if (action === "agent") Quickshell.execDetached(["omarchy-agent"])
+    if (action === "agent") agents.newSession()
     else if (action === "editor") apps.openEditor()
     else if (action === "browser") apps.openBrowser()
     else if (action === "files") apps.openFiles()
@@ -286,11 +395,13 @@ Item {
     id: agentsSvc
     pluginDir: island.pluginDir
     defaultAgent: island.agentId
+    omarchyAgent: island.omarchyAgent
+    usageAgent: island.pageAgent
+    usageAgents: island.usageAgents
     quietAfterMs: Math.max(20, Number(island.cfg("agentQuietSeconds")) || 180) * 1000
     onPermissionArrived: request => {
       if (island.cfg("autoExpandPermission")) {
         island.openPage("permission", "alert")
-        island.bounce()
       } else {
         island.peek("agent:" + request.agent, I18n.t("%1 izin istiyor").arg(island.profile(request.agent).name), request.project + " · " + request.tool, island.profile(request.agent).color, 3500)
       }
@@ -304,8 +415,9 @@ Item {
       }
     }
     onSessionFailed: s => {
-      if (island.mode !== "expanded")
+      if (island.mode !== "expanded") {
         island.peek("agent:" + s.agent, I18n.t("%1 bir hatayla durdu").arg(island.profile(s.agent).name), s.project + (s.error ? " · " + s.error : ""), Theme.red, 3600, "agent")
+      }
     }
     onSessionFinished: s => {
       if (island.cfg("peekOnAgentDone") !== false && island.cfg("peekOnClaudeDone") !== false && island.mode !== "expanded")
@@ -322,6 +434,7 @@ Item {
   MusicService {
     id: musicSvc
     tracking: island.mode === "expanded" && island.page === "music"
+    light: island.lightMode
     onTrackChanged: {
       if (island.cfg("peekOnTrackChange") && island.mode === "compact" && island.primary === "music")
         island.peek("music", music.title, music.artist, Theme.fg, 2400, "music")
@@ -597,6 +710,32 @@ Item {
     page = name
   }
 
+  // Wheel over the open island steps through its tabs: down/right is the
+  // next tab, up/left the previous. It follows the scroll: every notch (or
+  // the same distance on a touchpad) is one tab, so a slow scroll moves one
+  // at a time and a fast or long one moves several. Stops at the ends.
+  // Parts with a scroll of their own (the live feed) keep it.
+  property real wheelSum: 0
+  Timer { id: wheelDecay; interval: 260; onTriggered: island.wheelSum = 0 }
+  function wheelTabs(wheel) {
+    if (mode !== "expanded" || composing || page === "permission") return
+    var d = Math.abs(wheel.angleDelta.y) >= Math.abs(wheel.angleDelta.x) ? wheel.angleDelta.y : wheel.angleDelta.x
+    if (d === 0 && wheel.pixelDelta) d = (Math.abs(wheel.pixelDelta.y) >= Math.abs(wheel.pixelDelta.x) ? wheel.pixelDelta.y : wheel.pixelDelta.x) * 2
+    if (d === 0) return
+    wheelDecay.restart()
+    // A turn of direction starts over, so the first notch back counts.
+    if (wheelSum !== 0 && (wheelSum < 0) !== (d < 0)) wheelSum = 0
+    wheelSum += d
+    var steps = Math.trunc(wheelSum / 120)
+    if (steps === 0) return
+    wheelSum -= steps * 120
+    var i = pages.indexOf(page)
+    if (i === -1) return
+    var next = Math.max(0, Math.min(pages.length - 1, i - steps))
+    if (next === i) { wheelSum = 0; return }
+    setPage(pages[next])
+  }
+
   function openPage(name, by) {
     peekTimer.stop()
     if (name === "claude") name = "agent"
@@ -778,6 +917,117 @@ Item {
     return barGeom.h >= 40 ? barGeom.y + barGeom.h - compactH - 1
       : barGeom.y + Math.max(0, Math.round((barGeom.h - compactH) / 2))
   }
+  // ---- Liquid Glass
+  // The island is a translucent glass body (components/LiquidGlass.qml) on
+  // a backdrop blur only behind its own layer (bin/dynamic-island-glass,
+  // runtime only, undone with "glass": false or Hyprland's reload). It moves
+  // like liquid: the glass flexes ("jelly") on opening, closing and touch,
+  // lights up when touched ("energy"), and its specular edge follows the
+  // pointer.
+  readonly property bool glassOn: cfg("glass") !== false
+  onGlassOnChanged: glassSetup.run()
+  QtObject {
+    id: glassSetup
+    function run() {
+      blurProc.command = [island.pluginDir + "/bin/dynamic-island-glass", island.glassOn ? "on" : "off"]
+      blurProc.running = true
+    }
+  }
+  Process { id: blurProc }
+  Timer { running: true; interval: 50; onTriggered: glassSetup.run() }
+  // Hyprland reloads its config (and drops runtime rules) on every save.
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (event.name !== "configreloaded") return
+      if (island.glassOn) glassSetup.run()
+      hyprGlassSetup.run()
+    }
+  }
+
+  // HyprGlass (a Hyprland plugin) loaded: the compositor draws real
+  // refracting glass behind the island's layer, and the island drops its
+  // own smoky / milky tint, rim and shadow so nothing covers it. Checked
+  // now and then, so loading or unloading the plugin is picked up live.
+  // HyprGlass's layer glass is off unless the island turns it on: only
+  // while it runs with the Liquid Glass theme. Off again when the theme is
+  // switched off or the island goes away.
+  property bool hyprGlass: false
+  readonly property bool hyprGlassOn: hyprGlass && glassOn
+  onHyprGlassOnChanged: hyprGlassSetup.run()
+  onLightModeChanged: hyprGlassSetup.run()
+  QtObject {
+    id: hyprGlassSetup
+    function run() {
+      if (!island.hyprGlass) return
+      hyprGlassProc.command = island.hyprGlassOn
+        ? [island.pluginDir + "/bin/dynamic-island-hyprglass", "on", island.lightMode ? "light" : "dark"]
+        : [island.pluginDir + "/bin/dynamic-island-hyprglass", "off"]
+      hyprGlassProc.running = true
+    }
+  }
+  Component.onDestruction: if (hyprGlass) Quickshell.execDetached([pluginDir + "/bin/dynamic-island-hyprglass", "off"])
+  Process { id: hyprGlassProc }
+  Process {
+    id: hyprGlassProbe
+    command: [island.pluginDir + "/bin/dynamic-island-hyprglass", "status"]
+    stdout: StdioCollector { onStreamFinished: island.hyprGlass = text.trim() === "active" }
+  }
+  Timer { running: true; repeat: true; triggeredOnStart: true; interval: 15000; onTriggered: hyprGlassProbe.running = true }
+
+  property real jelly: 0
+  function wobble(amount) {
+    if (!glassOn || Theme.reduceMotion) return
+    jellyAnim.amount = amount
+    jellyAnim.restart()
+  }
+  SequentialAnimation {
+    id: jellyAnim
+    property real amount: 0
+    NumberAnimation { target: island; property: "jelly"; to: jellyAnim.amount; duration: 110; easing.type: Easing.OutQuad }
+    SpringAnimation { target: island; property: "jelly"; to: 0; spring: 2.6; damping: 0.16; epsilon: 0.0005 }
+  }
+  // The pointer's pull on the glass. Its position trails the pointer on a
+  // soft spring (liquid lag) and its strength fades in and out, so leaving
+  // lets the glass flow back.
+  property real pullX: 0
+  property real pullY: 0
+  property real pullAmp: 0
+  // Stiff and quick: it answers the pointer at once, with just enough
+  // trail to read as liquid. Rises in 90 ms; lets go a little softer.
+  Behavior on pullX { enabled: !Theme.reduceMotion; SpringAnimation { spring: 16; damping: 0.75; epsilon: 0.1 } }
+  Behavior on pullY { enabled: !Theme.reduceMotion; SpringAnimation { spring: 16; damping: 0.75; epsilon: 0.1 } }
+  Behavior on pullAmp {
+    enabled: !Theme.reduceMotion
+    NumberAnimation { duration: island.pullAmp > 0.1 && !hover.hovered ? 260 : 90; easing.type: Easing.OutCubic }
+  }
+  property real glassEnergy: 0
+  function flash() {
+    if (!glassOn || Theme.reduceMotion) return
+    flashAnim.restart()
+  }
+  SequentialAnimation {
+    id: flashAnim
+    NumberAnimation { target: island; property: "glassEnergy"; to: 1; duration: 90; easing.type: Easing.OutQuad }
+    NumberAnimation { target: island; property: "glassEnergy"; to: 0; duration: 520; easing.type: Easing.OutCubic }
+  }
+  function glassModeMotion() {
+    if (mode === "expanded") { wobble(0.035); flash() }
+    else if (mode === "peek") wobble(0.03)
+    else wobble(-0.025)
+  }
+  onSplitIslandChanged: wobble(splitIsland ? 0.03 : -0.02)
+  // The light: from the top-left at rest; toward the pointer over the
+  // island, so the edge highlight slides around as you move.
+  property real lightX: -0.55
+  property real lightY: -0.83
+  Behavior on lightX { SpringAnimation { spring: 3; damping: 0.5; epsilon: 0.002 } }
+  Behavior on lightY { SpringAnimation { spring: 3; damping: 0.5; epsilon: 0.002 } }
+  readonly property point glassLight: {
+    var l = Math.sqrt(lightX * lightX + lightY * lightY) || 1
+    return Qt.point(lightX / l, lightY / l)
+  }
+
   // ---- intro
   // The island stays hidden until it knows where the bar is (so it never
   // shows at a wrong, squashed size), then drops in from above the screen as
@@ -815,12 +1065,29 @@ Item {
   }
 
   readonly property int expandedW: cfg("expandedWidth")
+
+  // The layer surface is only as big as the island can get: its open width
+  // plus room for the shadow, shake and jelly, and short while closed, tall
+  // only while open (and a moment after, for the closing spring). Anything
+  // that composites the surface (Hyprland's blur, HyprGlass) then works on
+  // that area instead of a full-width 720 px band.
+  readonly property bool expandedNow: mode === "expanded"
+  onExpandedNowChanged: if (!expandedNow) tallHold.restart()
+  Timer { id: tallHold; interval: 900 }
+  readonly property int surfaceW: expandedW + 180
+  readonly property int surfaceH: expandedNow || tallHold.running || !introDone ? 720
+    : Math.max(topY, 0) + Math.max(compactH, 64) + 72
   readonly property bool hovered: hover.hovered
-  readonly property int hoverGrowW: mode === "compact" && hovered ? 12 : 0
-  readonly property int hoverGrowH: mode === "compact" && hovered ? 2 : 0
+  // Split in two, each half reacts on its own: no whole-island grow or lean;
+  // the half under the pointer lights up and hovering opens its agent.
+  readonly property int hoveredHalf: halvesOn && hovered ? (hover.point.position.x < stage.width / 2 ? 0 : 1) : -1
+  readonly property string hoveredAgent: hoveredHalf >= 0 ? (splitOrder[hoveredHalf] || "") : ""
+  readonly property int hoverGrowW: mode === "compact" && hovered && !halvesOn ? 12 : 0
+  readonly property int hoverGrowH: mode === "compact" && hovered && !halvesOn ? 2 : 0
 
   readonly property int idleW: cfg("idleClock") ? Math.max(130, Math.ceil(clockMetrics.advanceWidth) + 44) : 130
   readonly property int liveW: {
+    if (splitIsland) return 352
     if (primary === "agent") return 300
     if (primary === "timer") return 236
     if (primary === "music") return 268
@@ -861,7 +1128,12 @@ Item {
   Timer {
     id: hoverTimer
     interval: island.cfg("hoverDelay")
-    onTriggered: if (hover.hovered && island.mode !== "expanded") island.openPage(island.defaultPage(), "pointer")
+    onTriggered: {
+      if (!hover.hovered || island.mode === "expanded") return
+      // Over one half of a split island: that half's agent.
+      if (island.hoveredAgent) island.showAgent(island.hoveredAgent)
+      else island.openPage(island.defaultPage(), "pointer")
+    }
   }
 
   Timer {
@@ -922,6 +1194,8 @@ Item {
     function status(): string {
       return JSON.stringify({ agent: island.agentId, mode: island.mode, page: island.page, primary: island.primary, secondary: island.secondary, tertiary: island.tertiary,
         pending: agents.pending.length, sessions: agents.sessionList.length, listening: agents.listening,
+        running: island.runningAgents, working: island.workingAgents, split: island.splitIsland, pageAgent: island.pageAgent,
+        usage: island.agents.usage,
         ambient: island.ambientOn, audio: island.audio.active ? Math.round(island.audio.level * 100) / 100 : -1 })
     }
   }
@@ -956,6 +1230,81 @@ Item {
     }
   }
 
+  // ================================================================ glow
+
+  // HyprGlass turns every visible pixel of the island's layer into glass,
+  // so the music's ambient glow lives on a layer of its own while it is on:
+  // same size and place, one layer level down (Top, under the island's
+  // Overlay) so it always stays beneath it, no input, and not glassed.
+  // Without HyprGlass the glow stays in the island.
+  PanelWindow {
+    id: glowWindow
+    screen: window.screen
+    anchors { top: true }
+    implicitWidth: window.implicitWidth
+    implicitHeight: window.implicitHeight
+    color: "transparent"
+    exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.namespace: "dynamic-island-glow"
+    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    mask: Region {}
+
+    // The island's glow, following the stage (place, scale, fade).
+    Item {
+      visible: island.hyprGlassOn && ambient.visible
+      x: stage.x
+      y: stage.y
+      width: stage.width
+      height: stage.height
+      scale: stage.scale
+      transformOrigin: Item.Top
+      opacity: stage.opacity * ambient.opacity
+
+      RectangularShadow {
+        x: 0
+        width: Math.round(parent.width * 0.7)
+        height: parent.height
+        radius: shape.radius
+        blur: 24 + ambient.level * 10
+        spread: -2 + ambient.level * 3
+        color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, ambient.strength)
+      }
+      RectangularShadow {
+        x: Math.round(parent.width * 0.3)
+        width: parent.width - x
+        height: parent.height
+        radius: shape.radius
+        blur: 24 + ambient.level * 10
+        spread: -2 + ambient.level * 3
+        color: Qt.rgba(ambient.rightColor.r, ambient.rightColor.g, ambient.rightColor.b, ambient.strength)
+      }
+    }
+
+    // A music bubble's glow, following the bubble.
+    Repeater {
+      model: [rightBubble, leftBubble]
+      delegate: RectangularShadow {
+        required property var modelData
+        readonly property var b: modelData
+        readonly property real level: island.audio.available && island.audio.active ? island.audio.level : 0.45
+        readonly property bool on: island.hyprGlassOn && island.ambientOn && b.kind === "music" && b.shown
+        x: b.x
+        y: b.y
+        width: b.width
+        height: b.height
+        radius: width / 2
+        scale: b.bodyScale
+        blur: 14 + level * 6
+        spread: -2 + level * 2
+        color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, 0.28 + level * 0.3)
+        opacity: on ? b.opacity : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
+      }
+    }
+  }
+
   // ================================================================ window
 
   PanelWindow {
@@ -967,10 +1316,12 @@ Item {
       for (var i = 0; i < screens.length; i++) if (screens[i].name === want) return screens[i]
       return screens.length ? screens[0] : null
     }
-    anchors { top: true; left: true; right: true }
-    // Tall enough for the biggest page (the agent page with its feed
-    // expanded); the surface is transparent and clicks pass through.
-    implicitHeight: 720
+    // Centred at the top (no left/right anchor). Tall enough for the biggest
+    // page (the agent page with its feed expanded) while open; the surface is
+    // transparent and clicks pass through.
+    anchors { top: true }
+    implicitWidth: Math.min(screen ? screen.width : island.surfaceW, island.surfaceW)
+    implicitHeight: island.surfaceH
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "dynamic-island"
@@ -978,7 +1329,7 @@ Item {
     WlrLayershell.keyboardFocus: island.mode === "expanded" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // Only the island (and its bubble) take input; everything else on this
-    // full-width surface clicks straight through to the bar and windows.
+    // surface clicks straight through to the bar and windows.
     mask: Region {
       item: island.fullscreenHidden ? null : maskItem
       Region { item: island.fullscreenHidden || !rightBubble.shown ? null : rightHit }
@@ -1012,6 +1363,9 @@ Item {
           island.cyclePage(1); event.accepted = true
         } else if (island.mode === "expanded" && event.key === Qt.Key_BracketLeft) {
           island.cyclePage(-1); event.accepted = true
+        } else if (island.page === "shelf" && island.mode === "expanded" && (event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
+          // Ctrl+V on the open shelf: what you copied goes on it.
+          island.shelf.addFromClipboard(); event.accepted = true
         } else if (island.page === "music" && event.key === Qt.Key_Space && island.mode === "expanded") {
           music.togglePlaying(); event.accepted = true
         }
@@ -1042,12 +1396,49 @@ Item {
           SpringAnimation { spring: 3; damping: 0.4; epsilon: 0.05 }
         }
 
+        // The glass's light leans toward the pointer while it is over the
+        // island (from the top-left otherwise).
+        Binding {
+          target: island
+          property: "lightX"
+          value: hover.hovered ? (hover.point.position.x - stage.width / 2) / Math.max(1, stage.width / 2) * 0.9 - 0.2 : -0.55
+        }
+        Binding {
+          target: island
+          property: "lightY"
+          value: hover.hovered ? (hover.point.position.y - stage.height / 2) / Math.max(1, stage.height / 2) * 0.7 - 0.6 : -0.83
+        }
+
+        // The glass reaches for the pointer (compact, glass on).
+        Binding {
+          target: island
+          property: "pullAmp"
+          // Off: hovering the closed island only grows it a little.
+          value: 0
+        }
+        Binding {
+          target: island
+          property: "pullX"
+          when: hover.hovered
+          value: hover.point.position.x / Math.max(0.01, stage.scale)
+        }
+        Binding {
+          target: island
+          property: "pullY"
+          when: hover.hovered
+          value: hover.point.position.y / Math.max(0.01, stage.scale)
+        }
+
         // The pointer gently pulls the compact island toward itself.
         Binding {
           target: stage
           property: "leanX"
-          value: island.mode === "compact" && hover.hovered
-            ? Math.max(-1, Math.min(1, (hover.point.position.x - stage.width / 2) / (stage.width / 2))) * 3.5
+          // Measured against where the island rests (position + leanX), not
+          // where it has leaned to, or each lean moves the pointer's
+          // relative position and leans it again: that was the jitter.
+          // Under glass the glass itself reaches for the pointer instead.
+          value: island.mode === "compact" && hover.hovered && !island.halvesOn && !island.glassOn
+            ? Math.max(-1, Math.min(1, (hover.point.position.x + stage.leanX - stage.width / 2) / (stage.width / 2))) * 3.5
             : 0
         }
 
@@ -1080,7 +1471,10 @@ Item {
           Behavior on leftColor { ColorAnimation { duration: 1500 } }
           Behavior on rightColor { ColorAnimation { duration: 1500 } }
 
+          // With HyprGlass these are drawn on the glow layer instead (see
+          // glowWindow), where HyprGlass cannot turn them into glass.
           RectangularShadow {
+            visible: !island.hyprGlassOn
             x: 0
             width: Math.round(parent.width * 0.7)
             height: parent.height
@@ -1090,6 +1484,7 @@ Item {
             color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, ambient.strength)
           }
           RectangularShadow {
+            visible: !island.hyprGlassOn
             x: Math.round(parent.width * 0.3)
             width: parent.width - x
             height: parent.height
@@ -1107,9 +1502,70 @@ Item {
           blur: 28
           spread: 0
           offset.y: 8
-          color: Qt.rgba(0, 0, 0, 0.55)
+          // Under glass a dark shadow would show through: kept light, and
+          // below the blur threshold so it is never frosted.
+          color: Qt.rgba(0, 0, 0, island.hyprGlassOn ? 0 : Theme.light ? (island.glassOn ? 0.14 : 0.22) : (island.glassOn ? 0.28 : 0.55))
           opacity: island.mode === "compact" ? 0 : 1
           Behavior on opacity { NumberAnimation { duration: Theme.ms(260) } }
+        }
+
+        // ---- Liquid Glass surface (the glass bodies of the island, its
+        // halves and the bubbles, in one liquid field). Spans the bubbles'
+        // reach on both sides; coordinates are the stage's own.
+        LiquidGlass {
+          id: liquid
+          visible: island.glassOn && island.mode !== "compact"  // local: blends into the bar when compact
+          readonly property real s: Math.max(0.01, stage.scale)
+          x: -padX
+          y: -12
+          width: shape.width + padX * 2
+          height: shape.height + 80
+          readonly property real padX: Math.max(80, island.compactH * 2 + 40)
+          // Jelly: the glass stretches and settles on its own while the
+          // content stays put.
+          readonly property real jw: shape.width * island.jelly
+          readonly property real jh: -shape.height * island.jelly * 0.55
+          function box(x, y, w, h) { return Qt.vector4d(x + padX - jw / 2, y + 12 - jh / 2, w + jw, h + jh) }
+          rectA: island.halvesOn ? box(0, 0, (shape.width - island.splitGap) / 2, shape.height)
+                                 : box(0, 0, shape.width, shape.height)
+          radA: {
+            var r = shape.radius, h = shape.height / 2, inner = Math.min(h, island.splitGap * 2.2)
+            return island.halvesOn ? Qt.vector4d(inner, inner, h, h) : Qt.vector4d(r, r, r, r)
+          }
+          rectB: island.halvesOn ? box(shape.width - (shape.width - island.splitGap) / 2, 0, (shape.width - island.splitGap) / 2, shape.height)
+                                 : Qt.vector4d(0, 0, 0, 0)
+          radB: {
+            var h = shape.height / 2, inner = Math.min(h, island.splitGap * 2.2)
+            return Qt.vector4d(h, h, inner, inner)
+          }
+          function bubbleAt(b) {
+            void b.x; void b.y; void b.bodyScale; void b.opacity; void stage.x; void stage.y; void stage.scale
+            if (!b.visible || b.opacity < 0.02) return Qt.vector4d(0, 0, 0, 0)
+            var c = stage.mapFromItem(b, b.width / 2, b.height / 2)
+            var r = b.width / 2 * b.bodyScale * Math.min(1, b.opacity * 1.6) / s
+            return Qt.vector4d(c.x + padX, c.y + 12, r, 0)
+          }
+          bub0: bubbleAt(rightBubble)
+          bub1: bubbleAt(leftBubble)
+          blend: island.mode === "compact" ? 11 : 4
+          // Dark glass is smoky; light glass is clear, a thin milky tint.
+          // With HyprGlass the compositor draws the glass: only a trace of
+          // the surface is left, enough for HyprGlass to find its shape.
+          tint: island.hyprGlassOn ? Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.04)
+            : Theme.light
+            // Clear while compact; milkier when open, so dark text stays
+            // readable even over a dark window behind (no adaptive vibrancy here).
+            ? Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Math.max(0.08, Math.min(0.95,
+                (Number(island.cfg("glassOpacityLight")) || 0.26) + (island.mode === "compact" ? 0.10 : 0.48))))
+            : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Math.max(0.36, Math.min(0.95, Number(island.cfg("glassOpacity")) || 0.56)))
+          dark: Theme.light && !island.hyprGlassOn
+          rim: island.hyprGlassOn ? 0 : 1
+          light: island.glassLight
+          energy: island.glassEnergy
+          ambL: ambient.leftColor
+          ambR: ambient.rightColor
+          ambMix: ambient.opacity * (0.55 + ambient.level * 0.45)
+          pull: Qt.vector4d(island.pullX + padX, island.pullY + 12, island.pullAmp, 22)
         }
 
         // Drawn directly (no offscreen texture) so text and icons inside stay
@@ -1121,9 +1577,10 @@ Item {
           width: island.targetW
           height: island.targetH
           radius: island.targetR
-          color: island.mode === "compact" ? "transparent" : Theme.bg  // local: invisible in the bar
-          border.width: 1
-          border.color: island.mode === "compact" ? "transparent" : Qt.rgba(1, 1, 1, 0.10)
+          // Local: the compact island blends into the bar (no body, no rim).
+          color: island.mode === "compact" || island.halvesOn || island.glassOn ? "transparent" : Theme.bg
+          border.width: island.mode === "compact" || island.halvesOn || island.glassOn ? 0 : 1
+          border.color: Theme.ink(Theme.light ? 0.14 : 0.10)
           antialiasing: true
 
           Behavior on width {
@@ -1154,15 +1611,19 @@ Item {
             readonly property bool on: island.cfg("ambient") && expanded
               && island.page === "music" && island.music.available
             readonly property bool moving: on && !Theme.reduceMotion
-            opacity: on ? 1 : 0
+            // Over HyprGlass a lighter wash, so the colors tint the glass
+            // and the refraction still shows through.
+            opacity: on ? (island.hyprGlassOn ? 0.6 : 1) : 0
             visible: opacity > 0.005
             Behavior on opacity {
               enabled: musicBackdrop.expanded
               NumberAnimation { duration: Theme.ms(280); easing.type: Easing.OutCubic }
             }
 
-            property color c1: Qt.darker(island.music.ambient[0], 1.5)
-            property color c2: Qt.darker(island.music.ambient[1], 1.5)
+            // Dark: deepened so white text reads; light: washed out so dark
+            // text does.
+            property color c1: Theme.light ? Qt.tint(island.music.ambient[0], Qt.rgba(1, 1, 1, 0.55)) : Qt.darker(island.music.ambient[0], 1.5)
+            property color c2: Theme.light ? Qt.tint(island.music.ambient[1], Qt.rgba(1, 1, 1, 0.55)) : Qt.darker(island.music.ambient[1], 1.5)
             Behavior on c1 { ColorAnimation { duration: 1500 } }
             Behavior on c2 { ColorAnimation { duration: 1500 } }
 
@@ -1265,14 +1726,38 @@ Item {
             }
           }
 
+          // Two agents at work: the pill as two halves with a gap between.
+          // At gap 0 they are exactly the whole pill, so the split and the
+          // merge are seamless.
+          Repeater {
+            model: island.halvesOn ? [0, 1] : []
+            delegate: Rectangle {
+              required property int modelData
+              readonly property real inner: Math.min(height / 2, island.splitGap * 2.2)
+              width: (shape.width - island.splitGap) / 2
+              height: shape.height
+              x: modelData === 0 ? 0 : shape.width - width
+              readonly property bool lit: island.hoveredHalf === modelData
+              readonly property color agentTint: island.profile(island.splitOrder[modelData] || "").color
+              color: "transparent"  // local: blends into the bar
+              border.width: lit ? 1.5 : 1
+              border.color: lit ? Qt.rgba(agentTint.r, agentTint.g, agentTint.b, 0.6) : "transparent"
+              Behavior on border.color { ColorAnimation { duration: Theme.ms(160) } }
+              topLeftRadius: modelData === 0 ? height / 2 : inner
+              bottomLeftRadius: modelData === 0 ? height / 2 : inner
+              topRightRadius: modelData === 1 ? height / 2 : inner
+              bottomRightRadius: modelData === 1 ? height / 2 : inner
+            }
+          }
+
           // Background press target: compact/peek expand on click.
           MouseArea {
             id: shapeMouse
             anchors.fill: parent
             cursorShape: island.mode === "expanded" ? Qt.ArrowCursor : Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
-            onPressed: if (island.mode !== "expanded") stage.pressScale = 0.95
-            onReleased: stage.pressScale = 1
+            onPressed: if (island.mode !== "expanded") { stage.pressScale = 0.95; island.wobble(-0.03) }
+            onReleased: { stage.pressScale = 1; if (island.mode !== "expanded") island.flash() }
             onCanceled: stage.pressScale = 1
             onClicked: mouseEvent => {
               if (island.mode === "expanded") return
@@ -1283,7 +1768,7 @@ Item {
               island.openPage(target, "pointer")
             }
             onWheel: wheel => {
-              if (island.mode === "expanded") { wheel.accepted = false; return }
+              if (island.mode === "expanded") { island.wheelTabs(wheel); return }
               // Scroll on the compact island nudges the volume, as on macOS notch apps.
               Quickshell.execDetached(["omarchy-audio-output-volume", wheel.angleDelta.y > 0 ? "+5" : "-5"])
             }

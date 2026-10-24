@@ -12,6 +12,8 @@ Page {
   implicitHeight: shelf.count === 0 ? 124 : 172
 
   onShownChanged: if (shown) shelf.pruneMissing()
+  readonly property bool allCopied: allCopiedTimer.running
+  Timer { id: allCopiedTimer; interval: 1400 }
 
   // ---- empty / drop target
   Rectangle {
@@ -49,18 +51,10 @@ Page {
       Label {
         anchors.horizontalCenter: parent.horizontalCenter
         visible: !island.dragHover
-        text: I18n.t("ya da tıkla: kopyaladığını rafa ekle")
+        text: I18n.t("ya da Ctrl+V ile kopyaladığını ekle")
         font.pixelSize: 12
         color: Theme.tertiary
       }
-    }
-    MouseArea {
-      anchors.fill: parent
-      enabled: shelf.count === 0 && !island.dragHover
-      cursorShape: Qt.PointingHandCursor
-      onClicked: shelf.addFromClipboard()
-      Accessible.role: Accessible.Button
-      Accessible.name: I18n.t("Panodakini rafa ekle")
     }
   }
 
@@ -78,6 +72,16 @@ Page {
     boundsBehavior: Flickable.StopAtBounds
     activeFocusOnTab: true
     keyNavigationEnabled: true
+    // Up/down wheel steps the island's tabs as everywhere else on it;
+    // sideways (touchpad) scrolls the files.
+    WheelHandler {
+      onWheel: event => {
+        if (Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y))
+          list.contentX = Math.max(0, Math.min(list.contentWidth - list.width, list.contentX - event.angleDelta.x / 2))
+        else
+          page.island.wheelTabs(event)
+      }
+    }
 
     Accessible.role: Accessible.List
     Accessible.name: I18n.t("Raf, ") + I18n.count(shelf.count, "file")
@@ -106,6 +110,7 @@ Page {
         width: 86; height: 74
         radius: 16
         color: tileMouse.containsMouse || tile.ListView.isCurrentItem && list.activeFocus ? Theme.fillHover : Theme.fill
+        GlassSheen { takeFill: true; fill: tile.ListView.isCurrentItem && list.activeFocus ? Theme.fillHover : Theme.fill; lit: tileMouse.containsMouse }
         scale: tileMouse.pressed ? 0.94 : 1
         Behavior on scale {
           enabled: !Theme.reduceMotion
@@ -148,7 +153,7 @@ Page {
           size: 22
           iconSize: 12
           icon: "x"
-          fillColor: "#3a3a3c"
+          fillColor: Theme.chip
           opacity: tileMouse.containsMouse || hovered ? 1 : 0
           visible: opacity > 0
           accessibleName: tile.modelData.name + I18n.t(" dosyasını raftan kaldır")
@@ -163,9 +168,38 @@ Page {
           cursorShape: Qt.PointingHandCursor
           acceptedButtons: Qt.LeftButton | Qt.RightButton
           drag.target: dragProxy
-          onClicked: mouse => mouse.button === Qt.RightButton ? shelf.reveal(tile.modelData.path) : shelf.open(tile.modelData.path)
+          // Click: copy the file. Double-click: open it. Right-click: show it
+          // in Files. A single click waits out the double-click interval.
+          onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) { shelf.reveal(tile.modelData.path); return }
+            singleClick.restart()
+          }
+          onDoubleClicked: mouse => {
+            if (mouse.button !== Qt.LeftButton) return
+            singleClick.stop()
+            shelf.open(tile.modelData.path)
+          }
           onReleased: dragProxy.Drag.active = false
           z: -1
+        }
+
+        Timer {
+          id: singleClick
+          interval: Qt.styleHints.mouseDoubleClickInterval + 30
+          onTriggered: if (shelf.copyFile(tile.modelData.path)) copied.restart()
+        }
+        // "Copied" badge over the tile for a moment.
+        Rectangle {
+          anchors.fill: parent
+          radius: parent.radius
+          color: Qt.rgba(0.19, 0.82, 0.35, 0.22)
+          border.width: 1.5
+          border.color: Theme.green
+          opacity: copied.running ? 1 : 0
+          visible: opacity > 0.01
+          Behavior on opacity { NumberAnimation { duration: Theme.ms(180) } }
+          Icon { anchors.centerIn: parent; name: "check"; size: 24; color: Theme.green }
+          Timer { id: copied; interval: 1100 }
         }
 
         // Dragging the tile hands a real file URI to whatever app is under
@@ -206,18 +240,24 @@ Page {
     IslandButton {
       size: 32
       icon: "plus"
-      text: I18n.t("Panodan ekle")
+      text: I18n.t("Yapıştır")
+      hint: "Ctrl+V"
       fontSize: 13
       accessibleName: I18n.t("Panodakini rafa ekle")
       onClicked: shelf.addFromClipboard()
     }
+    // Copy all: every file on the clipboard as files (paste them anywhere at
+    // once); right-click copies their paths as text.
     IslandButton {
       size: 32
-      icon: "copy"
-      text: I18n.t("Yolları kopyala")
+      icon: page.allCopied ? "check" : "copy"
+      text: page.allCopied ? I18n.t("Kopyalandı") : I18n.t("Hepsini kopyala")
       fontSize: 13
-      accessibleName: I18n.t("Tüm dosya yollarını panoya kopyala")
-      onClicked: shelf.copyPaths()
+      tint: page.allCopied ? Theme.green : Theme.fg
+      accessibleName: I18n.t("Raftaki tüm dosyaları panoya kopyala")
+      hint: I18n.t("Sağ tık: yolları kopyala")
+      onClicked: if (shelf.copyFiles()) allCopiedTimer.restart()
+      onRightClicked: shelf.copyPaths()
     }
     IslandButton {
       size: 32

@@ -28,7 +28,7 @@ FocusScope {
   readonly property bool hovered: mouse.containsMouse
   readonly property bool down: mouse.pressed || keyDown
   property bool keyDown: false
-  readonly property color contentColor: prominent ? "#000000" : tint
+  readonly property color contentColor: prominent ? Theme.onTint : tint
 
   implicitHeight: size
   implicitWidth: text === "" ? size : content.width + Math.round(size * 0.9)
@@ -62,8 +62,16 @@ FocusScope {
     anchors.fill: parent
     radius: height / 2
     color: button.prominent ? button.tint
-      : !button.filled ? (button.down ? Theme.fill : button.hovered ? Theme.hairline : "transparent")
+      : !button.filled ? (Theme.glass ? "transparent" : button.down ? Theme.fill : button.hovered ? Theme.hairline : "transparent")
       : button.down ? Theme.fillPressed : button.hovered ? Theme.fillHover : button.fillColor
+    GlassSheen {
+      visible: Theme.glass && (button.filled || button.prominent)
+      takeFill: true
+      fill: button.prominent ? button.tint : button.fillColor
+      lit: button.hovered
+      pressed: button.down
+      strength: button.prominent ? 0.8 : 1
+    }
     scale: button.down ? 0.92 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.ms(140) } }

@@ -1,6 +1,9 @@
 #!/bin/bash
 # Send a message to a coding agent's session, as if typed at its prompt.
 # Usage: dynamic-island-send <pid> [<pid>...] < message
+#        dynamic-island-send --key <1|2|Escape> <pid> [<pid>...]
+#   --key presses one key at the session's prompt (answering Antigravity's
+#   permission prompt from the island); no message, no Enter.
 #   pids: the hook's ancestor chain. The message is read from stdin and only
 #   ever passed on through stdin (tmux load-buffer, wtype -): never as a
 #   command-line argument, which any local user could read from /proc.
@@ -12,8 +15,15 @@
 #
 # Exit status: 0 sent, 1 no session window found, 2 nothing to type with.
 
-text=$(head -c 16384)
-[[ -n $text ]] || exit 1
+key=""
+if [[ ${1:-} == --key ]]; then
+  key=${2:-}
+  [[ $key == 1 || $key == 2 || $key == Escape ]] || exit 1
+  shift 2
+else
+  text=$(head -c 16384)
+  [[ -n $text ]] || exit 1
+fi
 
 pids=" "
 for pid in "$@"; do [[ $pid =~ ^[0-9]+$ ]] && pids+="$pid "; done
@@ -23,6 +33,10 @@ for sock in "${TMUX_TMPDIR:-/tmp}/tmux-$(id -u)"/*; do
   [[ -S $sock ]] || continue
   while read -r pane_pid pane; do
     if [[ $pids == *" $pane_pid "* ]]; then
+      if [[ -n $key ]]; then
+        tmux -S "$sock" send-keys -t "$pane" "$key"
+        exit $?
+      fi
       buf="dynamic-island-$$"
       printf '%s' "$text" | tmux -S "$sock" load-buffer -b "$buf" - &&
         tmux -S "$sock" paste-buffer -d -b "$buf" -t "$pane" &&
@@ -33,6 +47,15 @@ for sock in "${TMUX_TMPDIR:-/tmp}/tmux-$(id -u)"/*; do
   done < <(tmux -S "$sock" list-panes -a -F '#{pane_pid} #{pane_id}' 2>/dev/null)
 done
 
+# ---- a key for the prompt: sent straight to the session's own window with
+# Hyprland's send_shortcut, which does not focus it, so answering from the
+# island never pulls you away from what you are doing.
+if [[ -n $key ]]; then
+  win=$("$(dirname "$(realpath "$0")")/dynamic-island-focus" --find "$@") || exit 1
+  hyprctl dispatch "hl.dsp.send_shortcut({ mods = \"\", key = \"$key\", window = \"address:$win\" })" 2>/dev/null | grep -qx ok && exit 0
+  # Older Hyprland: fall back to focusing the window and typing.
+fi
+
 # ---- terminal window: focus it, then type
 command -v wtype >/dev/null || exit 2
 # Only the session's own window, never a guess: typing into the wrong
@@ -42,4 +65,8 @@ target=$("$(dirname "$(realpath "$0")")/dynamic-island-focus" --exact "$@") || e
 sleep 0.35
 active=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
 [[ $active == "$target" ]] || exit 1
+if [[ -n $key ]]; then
+  [[ $key == Escape ]] && exec wtype -k Escape
+  exec wtype "$key"
+fi
 printf '%s' "$text" | wtype - && sleep 0.15 && wtype -k Return

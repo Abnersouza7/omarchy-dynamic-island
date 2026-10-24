@@ -117,12 +117,13 @@ Page {
         height: track.thickness
         radius: height / 2
         color: Theme.fill
+GlassSheen { strength: 0.6 }
         Behavior on height { NumberAnimation { duration: Theme.ms(160); easing.type: Easing.OutCubic } }
         Rectangle {
           width: Math.max(parent.height, parent.width * scrub.fraction)
           height: parent.height
           radius: height / 2
-          color: scrub.dragging ? Theme.fg : Qt.rgba(1, 1, 1, 0.85)
+          color: scrub.dragging ? Theme.fg : Theme.ink(0.85)
         }
       }
 
@@ -197,6 +198,7 @@ Page {
     height: 30
     radius: 15
     color: chipMouse.containsMouse || page.pickerOpen ? Theme.fillHover : Theme.fill
+    GlassSheen { takeFill: true; fill: page.pickerOpen ? Theme.fillHover : Theme.fill; lit: chipMouse.containsMouse; pressed: chipMouse.pressed }
     Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
 
     Row {
@@ -267,9 +269,10 @@ Page {
     width: Math.min(parent.width, 320)
     height: Math.min(pickerList.contentHeight + 40, chip.y - 6)
     radius: 16
-    color: "#1c1c1e"
+    color: Theme.popup
+    GlassSheen {}
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.10)
+    border.color: Theme.edge
 
     Item {
       id: pickerHead
@@ -323,7 +326,8 @@ Page {
         width: ListView.view.width
         height: 40
         radius: 11
-        color: optMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
+        color: optMouse.containsMouse && !Theme.glass ? Theme.fillHover : current ? Theme.fill : "transparent"
+        GlassSheen { strength: 0.8; visible: Theme.glass && parent.current; takeFill: true; lit: optMouse.containsMouse; pressed: optMouse.pressed }
 
         Icon {
           id: optIcon

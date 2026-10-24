@@ -20,6 +20,13 @@ QtObject {
   ]
   readonly property var codes: languages.map(l => l.code)
 
+  // Like t(), for a source string that is also used with another meaning
+  // elsewhere: the key carries a "|context" suffix that Turkish drops.
+  function tc(s) {
+    var v = t(s)
+    return v === s ? s.split("|")[0] : v
+  }
+
   function t(s) {
     if (lang === "tr") return s
     var table = lang === "es" ? Tr.es : lang === "ru" ? Tr.ru : Tr.en
@@ -35,6 +42,7 @@ QtObject {
     tool:    { en: ["tool", "tools"], es: ["herramienta", "herramientas"], ru: ["инструмент", "инструмента", "инструментов"], tr: ["araç"] },
     file:    { en: ["file", "files"], es: ["archivo", "archivos"], ru: ["файл", "файла", "файлов"], tr: ["dosya"] },
     item:    { en: ["item", "items"], es: ["elemento", "elementos"], ru: ["элемент", "элемента", "элементов"], tr: ["öğe"] },
+    agent:   { en: ["agent", "agents"], es: ["agente", "agentes"], ru: ["агент", "агента", "агентов"], tr: ["ajan"] },
     minute:  { en: ["minute", "minutes"], es: ["minuto", "minutos"], ru: ["минута", "минуты", "минут"], tr: ["dakika"] }
   })
   function count(n, noun) {

@@ -4,24 +4,80 @@
 
 [Omarchy](https://omarchy.org) bar'ının ortasında Apple tarzı bir Dynamic Island. Gerçeği gibi yay
 fiziğiyle açılan, baloncuklara bölünen ve titreyen tek bir siyah şekil: müzik, sayaç, ekran kaydı,
-dosya rafı, kısayollar ve **kodlama ajanı** oturumlarınız (Claude Code, Codex, OpenCode,
-Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsiniz.
+dosya rafı, kısayollar ve **kodlama ajanı** oturumlarınız (Claude Code, Codex, Antigravity CLI,
+OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsiniz.
 
 ![Dynamic Island](preview.png)
 
+<p align="center"><a href="docs/promo.mp4"><img src="docs/promo.webp" width="800" alt="Dynamic Island tanıtımı: ada açılıyor, sayfaları ve dört görünümü"></a><br><sub>Tam kaliteli video için tıklayın (MP4, 32 sn). <a href="https://www.remotion.dev">Remotion</a> ile yapıldı.</sub></p>
+
 ## Ekran görüntüleri
 
-**Kapalı hali**: ortada çalışan ajan, müzik ve sayaç yanlarda baloncuk olarak.
+**Dört görünüm**: Koyu ya da Açık, her biri düz ya da Liquid Glass (Ana sayfada bayrağın yanındaki düğmeden).
 
-<p align="center"><img src="docs/screenshots/compact.png" width="560" alt="Müzik ve sayaç baloncuklarıyla kapalı ada"></p>
+| Koyu | Açık |
+|---|---|
+| <img src="docs/screenshots/dark/home.png" alt="Koyu"> | <img src="docs/screenshots/light/home.png" alt="Açık"> |
+| **Koyu · Liquid Glass** | **Açık · Liquid Glass** |
+| <img src="docs/screenshots/dark-glass/home.png" alt="Koyu · Liquid Glass"> | <img src="docs/screenshots/light-glass/home.png" alt="Açık · Liquid Glass"> |
+
+**Kapalı**, her görünümde: ortada müzik, sayaç ve ajan baloncuklara ayrılmış.
+
+<p align="center"><img src="docs/screenshots/dark/compact.png" width="560" alt="Koyu"></p>
+<p align="center"><img src="docs/screenshots/light/compact.png" width="560" alt="Açık"></p>
+<p align="center"><img src="docs/screenshots/dark-glass/compact.png" width="560" alt="Koyu · Liquid Glass"></p>
+<p align="center"><img src="docs/screenshots/light-glass/compact.png" width="560" alt="Açık · Liquid Glass"></p>
+
+**Sayfalar** (varsayılan görünüm, Koyu · Liquid Glass):
 
 | Ana | Müzik |
 |---|---|
-| <img src="docs/screenshots/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/music.png" alt="Müzik sayfası"> |
-| **Ajan**: oturumlar, canlı akış, mesaj kutusu | **İzin**: adadan izin ver / her zaman / reddet |
-| <img src="docs/screenshots/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/permission.png" alt="İzin isteği"> |
+| <img src="docs/screenshots/dark-glass/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/dark-glass/music.png" alt="Müzik sayfası"> |
+| **Ajan: oturumlar, canlı akış, mesaj kutusu** | **İzin: izin ver / her zaman / reddet** |
+| <img src="docs/screenshots/dark-glass/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/dark-glass/permission.png" alt="İzin isteği"> |
 | **Sayaç** | **Raf** |
-| <img src="docs/screenshots/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/shelf.png" alt="Raf"> |
+| <img src="docs/screenshots/dark-glass/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/dark-glass/shelf.png" alt="Raf"> |
+
+Liquid Glass görüntüleri isteğe bağlı [HyprGlass](README.md#real-liquid-glass-with-hyprglass-optional) eklentisi yüklüyken çekildi; eklenti olmadan cam kırılmak yerine buzlu görünür.
+
+<details>
+<summary>Tüm sayfalar: Koyu</summary>
+
+| Ana | Müzik |
+|---|---|
+| <img src="docs/screenshots/dark/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/dark/music.png" alt="Müzik sayfası"> |
+| **Ajan: oturumlar, canlı akış, mesaj kutusu** | **İzin: izin ver / her zaman / reddet** |
+| <img src="docs/screenshots/dark/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/dark/permission.png" alt="İzin isteği"> |
+| **Sayaç** | **Raf** |
+| <img src="docs/screenshots/dark/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/dark/shelf.png" alt="Raf"> |
+
+</details>
+
+<details>
+<summary>Tüm sayfalar: Açık</summary>
+
+| Ana | Müzik |
+|---|---|
+| <img src="docs/screenshots/light/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/light/music.png" alt="Müzik sayfası"> |
+| **Ajan: oturumlar, canlı akış, mesaj kutusu** | **İzin: izin ver / her zaman / reddet** |
+| <img src="docs/screenshots/light/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/light/permission.png" alt="İzin isteği"> |
+| **Sayaç** | **Raf** |
+| <img src="docs/screenshots/light/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/light/shelf.png" alt="Raf"> |
+
+</details>
+
+<details>
+<summary>Tüm sayfalar: Açık · Liquid Glass</summary>
+
+| Ana | Müzik |
+|---|---|
+| <img src="docs/screenshots/light-glass/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/light-glass/music.png" alt="Müzik sayfası"> |
+| **Ajan: oturumlar, canlı akış, mesaj kutusu** | **İzin: izin ver / her zaman / reddet** |
+| <img src="docs/screenshots/light-glass/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/light-glass/permission.png" alt="İzin isteği"> |
+| **Sayaç** | **Raf** |
+| <img src="docs/screenshots/light-glass/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/light-glass/shelf.png" alt="Raf"> |
+
+</details>
 
 ## Özellikler
 
@@ -30,19 +86,48 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
 | **Kompakt** | Boştayken saat; canlı etkinlik varsa solda ve sağda bilgi, ortası temiz |
 | **Baloncuklar** | İkinci canlı etkinlik sağa, üçüncüsü sola ayrılır; her biri kendi başına çalışır. Çift tıklanan baloncuk ortayla yer değiştirir |
 | **Peek** | Şarkı değişti, Claude bitirdi, şarj başladı… için kısa bant |
-| **Genişletilmiş** | Ana · Müzik · Claude · Sayaç · Raf sekmeleri |
+| **Genişletilmiş** | Ana · Müzik · Claude · Sayaç · Raf sekmeleri; ada açıkken üzerinde tekerlek ile sekmeler arasında geçilir (aşağı: sonraki, yukarı: önceki; her çentik bir sekme, hızlı kaydırınca birkaç sekme atlar) |
 | **Uyarılar** | Claude izin isterse ya da süre dolarsa ada kendiliğinden açılır, cevaplanana kadar açık kalır |
 
-- **Ana sayfa**: saat/tarih, Claude kullanım halkaları (5 saat / haftalık), pil; *varsayılan*
-  ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi uygulama ikonlarıyla
-  kısayollar; hızlı zamanlayıcılar.
+- **Liquid Glass** (koyu): ada, yarıları ve baloncukları gerçek bir arka plan bulanıklığı üzerinde
+  tek bir yarı saydam cam yüzeydir; kenarlarda toplanan ışık ve imleci izleyen bir parlama vardır.
+  Sıvı gibi davranırlar: baloncuk adadan damla gibi kopar ve geri akar, ikiye bölünen yarılar
+  incelen bir köprüyle ayrılır, cam açılırken, kapanırken ve dokununca esner ve ışıldar. Bulanıklık
+  yalnızca adanın katmanı için çalışma anında kurulur; `"glass": false` hepsini kapatır,
+  `"glassOpacity"` camın koyuluğunu ayarlar. Sekme çubuğundaki seçim küçük bir cam mercektir;
+  seçtiğiniz sekmeye damla gibi uzanır ve sonra toparlanır (iki kenarı ayrı yaylarla hareket eder).
+  Merceği tutup çubuk boyunca sürükleyebilirsiniz; bırakınca en yakın sekmeye oturur. 
+- Liquid Glass temasında tüm düğmeler, kutular, kartlar, satırlar ve açılır menüler de cam görünümündedir.
+  Üzerine gelince vurgu katmanı çıkmaz: camı bir su balonu gibi yerinde birkaç piksel şişer, üstündeki
+  yazı kıpırdamaz.
+- **Tema**: Ana sayfada bayrağın yanındaki düğmeden **Koyu** ya da **Açık** görünüm ve her ikisinde
+  açılıp kapatılabilen **Liquid Glass** seçilir (`appearance` ve `glass`). Dört görünüm: düz siyah,
+  koyu dumanlı cam, düz beyaz ve açık şeffaf cam (kapalıyken şeffaf, açıkken yazılar okunsun diye
+  biraz daha sütlü; `glassOpacityLight` ile ayarlanır).
+- **Ana sayfa**: saat, tarih ve pil; kurulu her ajan için bir kullanım kartı (logosu ve Claude
+  Code'daki gibi iki halka: 5 saat ve haftalık; çalışanlar önce; tıklayınca o ajan açılır) ve *varsayılan* ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi
+  uygulama ikonlarıyla ızgara şeklinde kısayollar.
 - **Müzik**: tüm MPRIS oynatıcılar; kapak, sürüklenebilir ilerleme çubuğu, kontroller. Dalga formu kapak renginde.
   Müzik etkinliği yalnızca çalarken görünür; duraklatılınca ya da kapatılınca hemen kaybolur.
 - **Yenile**: Ana sayfadaki yuvarlak ok tüm Omarchy kabuğunu yeniden başlatır (bar ve ada yeniden
   yüklenir); sağ tık yalnızca takılan adayı düzeltir (oturumlar, istekler, uyarılar).
 - **Ajan**: Omarchy'nin varsayılan ajanını izler (`omarchy default agent …`): adı, logosu, renkleri ve
   spinner'ı. Tüm oturumlar, o an ne yaptıkları ve süreleri; terminale git, klasörü editörde aç, yeni oturum.
-- **Canlı akış** (Claude Code, Codex): oturumların altında son istekler, yanıtlar, araç çağrıları ve
+- **AI sekmesi**: o an çalışana göre adlanır: tek ajanın canlı oturumu varsa onun logosu ve adı,
+  birkaç ajan varsa yalnızca logoları (iki tane, sonra "…"), hiçbiri yoksa "AI".
+- **Ajan çubuğu**: birden fazla ajan çalışırken AI sayfasındaki logo küçük bir çubuğa dönüşür.
+  Tıklayınca çalışan ajanlara açılır; birini seçince oturumlar, canlı akış, kullanım, "Bağla" ve
+  "Yeni oturum" ona geçer. Sayfa en acil ajanla açılır (sizi bekleyen, sonra çalışan); ada
+  kapanınca yine ona döner. Kapalı çubuktaki ya da bir ajan ikonundaki nokta, başka bir ajanın
+  çalıştığını (kendi renginde) ya da sizi beklediğini (turuncu, yanıp sönen) gösterir.
+- **İki ajan aynı anda**: iki farklı ajan çalışırken kapalı ada ortadan ikiye bölünür, her yarıda
+  bir ajan (spinner, durum, logo). Her ajan çalıştığı sürece kendi tarafında kalır. Yarılar
+  birbirinden bağımsızdır: imlecin üstündeki yarı kendi ajanının renginde yanar, üzerine gelmek
+  ya da tıklamak o ajanın sayfasını açar. Biri boşa düşünce iki yarı yeniden tek adada birleşir.
+- **Kullanım**: AI sayfası ve Ana sayfa, ekrandaki ajanın 5 saatlik ve haftalık limitlerini gösterir:
+  Claude ve Codex Omarchy'nin ajan panelinden, Antigravity `agy -p /usage` ile (yerel, model
+  çağrısı yok; agy'nin seçili modelinin kota grubu).
+- **Canlı akış** (Claude Code, Codex, Antigravity CLI): oturumların altında son istekler, yanıtlar, araç çağrıları ve
   çıktıları, ajanın kendi terminalindeki gibi. Birden çok oturumda izlemek istediğinize tıklayın;
   akış kaydırılabilir (tekerlek ya da sürükleme); en alttayken yeni çıktıyı izler. Köşedeki ok
   akışı büyütür ve çıktıların tamamını kesmeden gösterir.
@@ -64,8 +149,11 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
   (`sudo pacman -S cava`) ışık sesle birlikte nefes alır; değilse sabit durur. Kapatmak için
   `"ambient": false` (yalnızca hareketi kapatmak için `"ambientAudio": false`).
 - **Raf**: dosyaları adaya bırakın, sonra istediğiniz uygulamaya geri sürükleyin. Rafta bir şey
-  varken yandaki raf yuvarlağı kaç öğe olduğunu ve ne kadar dolu olduğunu gösterir; yuvarlağa
-  tıklamak kopyaladığınızı rafa ekler (Dosyalar'dan kopyalanan dosyalar ya da kopyalanan görsel/metin).
+  varken yandaki raf yuvarlağı kaç öğe olduğunu ve ne kadar dolu olduğunu gösterir. Raf açıkken
+  **Ctrl+V** kopyaladığınızı rafa ekler (Dosyalar'dan kopyalanan dosyalar ya da kopyalanan
+  görsel/metin). Bir dosyaya tek tıklamak onu panoya dosya olarak kopyalar, çift tıklamak açar,
+  sağ tık Dosyalar'da gösterir. **Hepsini kopyala** raftaki tüm dosyaları tek seferde panoya koyar
+  (sağ tık: yollarını).
 - Claude Code'un kendi spinner'ı (`· ✢ * ✶ ✻ ✽`) ve durum parlaması canlı bir `claude` oturumundan
   alındı; diğer ajanlar kendi CLI'larının braille spinner'ını kullanır.
 - Kesirli ölçekte keskin: yazılar piksele hizalı, ikonlar ekranın gerçek piksel yoğunluğunda çizilir.
@@ -77,17 +165,26 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
 | Claude Code | var | İzin ver · Her zaman · Reddet |
 | Codex | var | İzin ver · Reddet |
 | OpenCode | var | İzin ver · Her zaman · Reddet |
-| Gemini CLI | var | Gösterilir, terminalde yanıtlanır (Gemini hook'ları yanıt veremez) |
+| Antigravity CLI | var | İzin ver · Her zaman (bu konuşmada) · Reddet; agy'nin kendi istem tuşlarıyla |
 | Pi, Oh My Pi, Grok, Crush, Cursor, Copilot, Hermes, OpenClaw, Muse | — | — (olay API'si yok; marka, başlatma ve kullanım) |
 
 Arka plan çalıştırmaları (`claude -p`, SDK betikleri) oturum ya da uyarı olarak görünmez.
-- Türkçe ve İngilizce arayüz; Omarchy sistem fontunu kullanır.
+- İngilizce, İspanyolca, Rusça ve Türkçe arayüz; Omarchy sistem fontunu kullanır.
+
+Antigravity CLI (`agy`) her araç çağrısını hook'lara bildirir ama izin istemini bildirmez; bir
+hook'un "izin ver" yanıtı da o istemi atlatmaz. Bu yüzden ada agy'nin kendi günlüğünü izler
+(`Surfacing tool confirmation … at step N`, hook'un adım numarasıyla eşleşir) ve adadan yanıt
+verdiğinizde agy'nin terminalinde istemin tuşuna basar: `1` çalıştır, `2` bu konuşmada hep izin
+ver, `Esc` iptal. agy tmux'taysa arka planda, değilse Hyprland'in `send_shortcut`'ı ile doğrudan
+agy'nin kendi penceresine (işlemle birebir eşleşen); odak hiç değişmez. Adadan izin vermek hiçbir
+ajanda sizi terminale götürmez.
+Terminalde yanıtlarsanız adadaki kart kendiliğinden kapanır.
 
 ### Etkileşim
 
 | Hareket | Sonuç |
 |---|---|
-| Üzerine gel | Hafif büyür, imlece doğru eğilir; 380 ms sonra açılır |
+| Üzerine gel | Hafif büyür, imlece doğru eğilir (ikiye bölünmüşse imlecin üstündeki yarı yanar). Üzerine gelince de açılması için `"hoverExpand": true` |
 | Tıkla | Açılır (basılıyken içe çöker) |
 | Sağ tık | Ana sayfa |
 | Müzikte orta tık | Oynat / duraklat |
@@ -105,7 +202,7 @@ Klavye (ada odaktayken): `Esc` kapat/reddet · `Enter`/`Y` izin ver · `A` her z
 
 - Omarchy 4 (Quickshell tabanlı `omarchy-shell`) ve Hyprland
 - Omarchy'de zaten var: `python3`, `jq`, `wl-clipboard`, `wtype`, `tmux`, `pw-play`,
-  `notify-send`, `xdg-open`, `nautilus`
+  `notify-send`, `xdg-open`, `nautilus`, ImageMagick (`magick`, albüm kapakları için)
 - İsteğe bağlı:
   - [`cava`](https://github.com/karlstav/cava) (`sudo pacman -S cava`): ambiyans ışığı sesle hareket
     eder; yoksa ışık sabit durur
@@ -138,11 +235,11 @@ Ajanlarınızı bağlayın: adanın ajan sayfasındaki **Bağla** düğmesiyle (
 
 ```sh
 ~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-agent-setup claude codex
-# seçenekler: claude codex gemini opencode all · --remove … · --status
+# seçenekler: claude codex antigravity opencode all · --remove … · --status
 ```
 
-Claude Code `~/.claude/settings.json`, Codex `~/.codex/hooks.json`, Gemini CLI `~/.gemini/settings.json`
-dosyasına hook ekler; OpenCode için `~/.config/opencode/plugins/` altına eklenti bağlantısı koyar.
+Claude Code `~/.claude/settings.json`, Codex `~/.codex/hooks.json`, Antigravity CLI
+`~/.gemini/config/hooks.json` dosyasına hook ekler; OpenCode için `~/.config/opencode/plugins/` altına eklenti bağlantısı koyar.
 Her dosya önce yedeklenir, yalnızca adanın kendi girdileri eklenir/kaldırılır. Ada çalışmıyorsa
 hook'lar hiçbir şey yazmaz ve ajan normal davranır.
 
@@ -154,6 +251,17 @@ o.bind("SUPER + ALT + Y", "Claude: izin ver", "omarchy-shell -q dynamicisland ap
 o.bind("SUPER + ALT + N", "Claude: reddet", "omarchy-shell -q dynamicisland deny")
 o.bind("SUPER + ALT + T", "Dynamic Island: sayaç", "omarchy-shell -q dynamicisland open timer")
 ```
+
+## Gerçek Liquid Glass (HyprGlass, isteğe bağlı)
+
+[HyprGlass](https://github.com/hyprnux/hyprglass) Hyprland eklentisi yüklüyse arkadaki görüntüyü
+compositor gördüğü için ada gerçek kırılan cam olur (bulanıklık, mercek, renkli kenarlar, uyarlanan
+ton). Ada eklentiyi kendisi algılar; kendi koyu/sütlü tonunu, kenar çizgisini ve gölgesini bırakır,
+müzik ışımasını HyprGlass'ın dokunmadığı ayrı bir katmana (`dynamic-island-glow`) taşır, böylece ışıma cama dönüşmez ve köşeler pürüzsüz kalır ve açık/koyu görünümü HyprGlass'a aktarır. HyprGlass yalnızca ada çalışırken
+ve temada Liquid Glass seçiliyken açılır; Liquid Glass'ı kapatınca kapanır. Eklenti yoksa hiçbir
+şey değişmez. HyprGlass'ı Hyprland yapılandırmasında yalnızca `dynamic-island` katmanı için ayarlayın
+(yoksa duvar kâğıdı dahil tüm katmanlara uygular, GPU'yu yorar); örnek yapılandırma
+[İngilizce README'de](README.md#real-liquid-glass-with-hyprglass-optional).
 
 ## Ayarlar
 
@@ -193,7 +301,7 @@ omarchy plugin remove io.github.ofa14-prog.dynamic-island
 ## Teşekkür
 
 Arayüz ikonları [Reicon](https://github.com/dqev/reicon)'dan (MIT; temel ikonlar Solar Icons,
-CC BY 4.0). Ajan logoları (Claude, OpenAI, Gemini, OpenCode, Copilot, Cursor, X) Simple Icons
-üzerinden; sahiplerinin ticari markalarıdır ve bu proje hiçbiriyle bağlantılı değildir. Ayrıntılar: [icons/NOTICE.md](icons/NOTICE.md).
+CC BY 4.0). Ajan logoları (Claude, OpenAI, Gemini, OpenCode, Copilot, Cursor, X) Simple Icons,
+Antigravity [LobeHub Icons](https://github.com/lobehub/lobe-icons) (MIT) üzerinden; sahiplerinin ticari markalarıdır ve bu proje hiçbiriyle bağlantılı değildir. Ayrıntılar: [icons/NOTICE.md](icons/NOTICE.md).
 
 MIT Lisansı, bkz. [LICENSE](LICENSE).

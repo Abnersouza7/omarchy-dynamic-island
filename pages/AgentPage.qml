@@ -2,30 +2,66 @@ import QtQuick
 import "../components"
 
 // Every coding-agent session: what it is doing right now, and a jump to it.
-// Branded after Omarchy's default agent; each session row keeps its own agent.
+// Branded after the island's agent (Omarchy's default, or the one picked in
+// the agent bar); each session row keeps its own agent.
 Page {
   id: page
 
   property var island
   readonly property var agents: island.agents
-  readonly property var sessions: agents.sessionList.slice(0, 4)
+  // With several agents installed the page is per agent (the bar switches);
+  // otherwise it lists every session.
+  // The page shows one agent at a time (island.pageAgent); the bar switches
+  // between the agents that are running.
+  readonly property string agentId: island.pageAgent
+  // No agent at work and none picked: an overview of every agent instead.
+  readonly property bool overview: agentId === ""
+
+  // ---- refresh: look for open agent sessions now (bin/dynamic-island-scan)
+  property string scanNote: ""
+  Timer { id: scanNoteTimer; interval: 2200; onTriggered: page.scanNote = "" }
+  Connections {
+    target: page.agents
+    function onScanned(found, added) {
+      page.scanNote = added > 0 ? I18n.t("%1 yeni oturum bulundu").arg(added)
+        : found > 0 ? I18n.t("Yeni oturum yok") : I18n.t("Açık oturum bulunamadı")
+      scanNoteTimer.restart()
+    }
+  }
+  component RefreshButton: IslandButton {
+    size: 30
+    iconSize: 15
+    icon: "restart"
+    text: page.agents.scanning ? I18n.t("Taranıyor…") : page.scanNote
+    fontSize: 12
+    accessibleName: I18n.t("Açık oturumları tara")
+    onClicked: page.agents.scan()
+  }
+  readonly property bool perAgent: island.barAgents.length > 1
+  readonly property var sessions: overview ? [] : agents.sessionList.filter(s => !perAgent || s.agent === agentId).slice(0, 4)
+  readonly property string product: island.profile(agentId).product
+  readonly property color tint: island.profile(agentId).color
+  readonly property string logo: island.logoFor(agentId)
 
   implicitHeight: col.implicitHeight + 8
 
-  readonly property var profile: island.agent
+  readonly property var profile: island.profile(agentId)
   // "full" / "status": the agent reports sessions once connected;
   // "none": it has no event API, so there is nothing to connect.
   readonly property bool connectable: profile.integration !== "none"
-  readonly property bool connected: agents.hooksInstalled
+  readonly property bool connected: agents.installed[agentId] === true
 
-  // ---- live preview (Claude Code and Codex)
+  onShownChanged: if (!shown) agentBar.open = false
+
+  // ---- live preview (Claude Code, Codex and Antigravity)
   // Follows the focused session; with several, click a row to watch it.
   property string pickedId: ""
   readonly property var previewSession: {
     void agents.revision
     var picked = agents.sessions[pickedId]
-    if (agents.canPreview(picked)) return picked
-    if (agents.canPreview(agents.focusSession)) return agents.focusSession
+    var mine = x => !!x && sessions.some(y => y.id === x.id)
+    if (agents.canPreview(picked) && mine(picked)) return picked
+    if (agents.canPreview(agents.focusSession) && mine(agents.focusSession)) return agents.focusSession
     return sessions.find(x => agents.canPreview(x)) || null
   }
   Binding {
@@ -107,29 +143,286 @@ Page {
     width: parent.width
     spacing: 12
 
-    // ---- header
+    // ---- overview: every agent, none favoured. A card each with its
+    // mark, state, usage and actions; the card opens that agent's page.
     Item {
+      visible: page.overview
       width: parent.width
       height: 30
       Row {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 10
-        Icon {
+        Icon { anchors.verticalCenter: parent.verticalCenter; name: "sparkles"; size: 20; color: Theme.fg }
+        Label { anchors.verticalCenter: parent.verticalCenter; text: "AI"; font.pixelSize: 16; strong: true }
+        Label {
           anchors.verticalCenter: parent.verticalCenter
-          source: island.agentLogo
-          name: island.agentLogo ? "" : "sparkles"
-          color: island.agentColor
+          text: I18n.count(island.usageAgents.length, "agent")
+          font.pixelSize: 13
+          color: Theme.tertiary
+        }
+      }
+      RefreshButton {
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+      }
+    }
+    Column {
+      visible: page.overview
+      width: parent.width
+      spacing: 8
+      Repeater {
+        model: island.usageAgents
+        delegate: Rectangle {
+          id: agentCard
+          required property string modelData
+          readonly property var prof: island.profile(modelData)
+          readonly property var mine: agents.sessionList.filter(x => x.agent === modelData)
+          readonly property var u: agents.usageOf(modelData)
+          readonly property bool connected: agents.installed[modelData] === true
+          width: parent.width
+          height: 58
+          radius: 18
+          color: cardMouse.containsMouse ? Theme.fillHover : Theme.fill
+          GlassSheen { takeFill: true; lit: cardMouse.containsMouse; pressed: cardMouse.pressed }
+          MouseArea {
+            id: cardMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: island.viewAgent = agentCard.modelData
+          }
+          Icon {
+            id: cardIcon
+            x: 16
+            anchors.verticalCenter: parent.verticalCenter
+            source: island.logoFor(agentCard.modelData)
+            name: source ? "" : "sparkles"
+            color: agentCard.prof.color
+            size: 24
+          }
+          Column {
+            anchors.left: cardIcon.right
+            anchors.leftMargin: 12
+            anchors.right: cardActions.left
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            Label { width: parent.width; text: agentCard.prof.product; font.pixelSize: 14; strong: true }
+            Label {
+              width: parent.width
+              font.pixelSize: 12
+              color: Theme.secondary
+              text: (agentCard.mine.length ? I18n.count(agentCard.mine.length, "session")
+                     : agentCard.connected || agentCard.prof.integration === "none" ? I18n.t("Aktif oturum yok") : I18n.t("Bağlı değil"))
+                + (agentCard.u.session >= 0 ? "  ·  " + I18n.t("5s") + " " + Math.round(agentCard.u.session * 100) + "%" : "")
+                + (agentCard.u.weekly >= 0 ? "  ·  " + I18n.t("7g") + " " + Math.round(agentCard.u.weekly * 100) + "%" : "")
+            }
+          }
+          Row {
+            id: cardActions
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+            IslandButton {
+              visible: !agentCard.connected && agentCard.prof.integration !== "none"
+              size: 34
+              text: I18n.t("Bağla")
+              fontSize: 13
+              tint: agentCard.prof.color
+              accessibleName: I18n.t("%1 bağlantısını kur").arg(agentCard.prof.product)
+              onClicked: agents.installHooks(agentCard.modelData)
+            }
+            IslandButton {
+              size: 34
+              icon: "plus"
+              iconSize: 16
+              accessibleName: I18n.t("Yeni ") + agentCard.prof.name + I18n.t(" oturumu")
+              onClicked: { agents.newSession(agentCard.modelData); island.collapse() }
+            }
+          }
+          Accessible.role: Accessible.Button
+          Accessible.name: prof.product
+        }
+      }
+    }
+
+    // ---- header
+    Item {
+      visible: !page.overview
+      width: parent.width
+      height: 30
+      Row {
+        id: headRow
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 10
+        // Room left of the usage readout; the session count gives way first.
+        readonly property real room: parent.width - (usageRow.visible ? usageRow.width + 14 : 0)
+        Icon {
+          visible: !agentBar.visible
+          anchors.verticalCenter: parent.verticalCenter
+          source: page.logo
+          name: page.logo ? "" : "sparkles"
+          color: page.tint
           size: 22
         }
-        Label {
+
+        // ---- agent bar: the current agent's mark and a chevron; click to
+        // open it sideways onto every installed agent, click one to switch.
+        Rectangle {
+          id: agentBar
+          visible: island.barAgents.length > 1
           anchors.verticalCenter: parent.verticalCenter
-          text: island.agentProduct
+          property bool open: false
+          readonly property int chip: 30
+          // Current agent first, the rest after it.
+          readonly property var order: [page.agentId].concat(island.barAgents.filter(a => a !== page.agentId))
+          readonly property int closedW: chip + 18
+          readonly property int openW: order.length * (chip + 2) + 2
+          // Another agent has a session running, or one that needs you.
+          readonly property bool othersBusy: agents.sessionList.some(x => x.agent !== page.agentId && agents.isBusy(x))
+          readonly property bool othersNeed: agents.sessionList.some(x => x.agent !== page.agentId && agents.needsYou(x))
+            || agents.pending.some(r => r.agent !== page.agentId)
+          width: open ? openW : closedW
+          height: chip + 4
+          radius: height / 2
+          color: open ? Theme.fill : barMouse.containsMouse && !Theme.glass ? Theme.fillHover : "transparent"
+GlassSheen { visible: Theme.glass && agentBar.open }
+          clip: true
+          Behavior on width {
+            enabled: !Theme.reduceMotion
+            NumberAnimation { duration: Theme.ms(240); easing.type: Easing.OutCubic }
+          }
+          Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
+
+          Accessible.role: Accessible.ComboBox
+          Accessible.name: I18n.t("Ajan") + ": " + page.product
+          Accessible.description: I18n.t("Tıkla: ajanları göster")
+          Accessible.onPressAction: open = !open
+
+          // The closed bar's whole area toggles it.
+          MouseArea {
+            id: barMouse
+            anchors.fill: parent
+            enabled: !agentBar.open
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: agentBar.open = true
+          }
+
+          Row {
+            x: 2
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            Repeater {
+              model: agentBar.order
+              delegate: Item {
+                id: chipItem
+                required property string modelData
+                required property int index
+                readonly property bool current: modelData === page.agentId
+                readonly property var mine: agents.sessionList.filter(x => x.agent === modelData)
+                readonly property bool busy: mine.some(x => agents.isBusy(x))
+                readonly property bool needs: mine.some(x => agents.needsYou(x)) || agents.pending.some(r => r.agent === modelData)
+                width: agentBar.chip
+                height: agentBar.chip
+                opacity: agentBar.open || current ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.ms(160) } }
+
+                Rectangle {
+                  anchors.fill: parent
+                  radius: width / 2
+                  color: chipItem.current && agentBar.open ? Theme.fillHover
+                    : chipMouse.containsMouse && !Theme.glass ? Theme.fill : "transparent"
+                }
+                Icon {
+                  anchors.centerIn: parent
+                  source: island.logoFor(chipItem.modelData)
+                  name: source ? "" : "sparkles"
+                  color: island.profile(chipItem.modelData).color
+                  size: 19
+                }
+                // A session of this agent is running (dot) or needs you (pulsing).
+                Rectangle {
+                  visible: (chipItem.busy || chipItem.needs) && !chipItem.current
+                  anchors.right: parent.right
+                  anchors.top: parent.top
+                  anchors.margins: 2
+                  width: 8; height: 8; radius: 4
+                  color: chipItem.needs ? Theme.orange : island.profile(chipItem.modelData).color
+                  border.width: 1.5
+                  border.color: Theme.bg
+                  SequentialAnimation on opacity {
+                    running: chipItem.needs && !Theme.reduceMotion && page.shown
+                    loops: Animation.Infinite
+                    onRunningChanged: if (!running) parent.opacity = 1
+                    NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutSine }
+                  }
+                }
+                MouseArea {
+                  id: chipMouse
+                  anchors.fill: parent
+                  enabled: agentBar.open
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    // Close first: switching reorders the chips and this
+                    // delegate may be gone right after.
+                    var pick = chipItem.modelData
+                    agentBar.open = false
+                    if (pick !== page.agentId) { page.pickedId = ""; island.viewAgent = pick }
+                  }
+                }
+                Accessible.role: Accessible.RadioButton
+                Accessible.name: island.profile(modelData).product
+                Accessible.checked: current
+              }
+            }
+          }
+          // Chevron while closed; a dot on it when another agent is busy
+          // (its color) or needs you (orange, pulsing).
+          Icon {
+            id: chevron
+            anchors.right: parent.right
+            anchors.rightMargin: 4
+            anchors.verticalCenter: parent.verticalCenter
+            name: "chevron-up"
+            size: 13
+            rotation: 90
+            color: Theme.tertiary
+            visible: !agentBar.open
+          }
+          Rectangle {
+            visible: !agentBar.open && (agentBar.othersBusy || agentBar.othersNeed)
+            x: chevron.x + 7
+            y: chevron.y - 4
+            width: 7; height: 7; radius: 3.5
+            color: agentBar.othersNeed ? Theme.orange : Theme.secondary
+            SequentialAnimation on opacity {
+              running: agentBar.othersNeed && !Theme.reduceMotion && page.shown
+              loops: Animation.Infinite
+              onRunningChanged: if (!running) parent.opacity = 1
+              NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+              NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutSine }
+            }
+          }
+        }
+
+        Label {
+          id: productLabel
+          anchors.verticalCenter: parent.verticalCenter
+          text: page.product
           font.pixelSize: 16
           strong: true
+          readonly property real lead: agentBar.visible ? agentBar.width : 22
+          width: Math.min(implicitWidth, headRow.room - lead - 10)
         }
         Label {
+          id: countLabel
           anchors.verticalCenter: parent.verticalCenter
-          text: agents.sessionList.length > 0 ? I18n.count(agents.sessionList.length, "session") : ""
+          visible: !agentBar.open && productLabel.lead + productLabel.implicitWidth + implicitWidth + 20 <= headRow.room
+          text: page.sessions.length > 0 ? I18n.count(page.sessions.length, "session") : ""
           font.pixelSize: 13
           color: Theme.tertiary
         }
@@ -155,10 +448,12 @@ Page {
               width: 40; height: 6; radius: 3
               anchors.verticalCenter: parent.verticalCenter
               color: Theme.fill
+        GlassSheen {}
+GlassSheen { strength: 0.7 }
               Rectangle {
                 width: Math.max(6, parent.width * Math.min(1, modelData.v))
                 height: parent.height; radius: 3
-                color: modelData.v >= 0.9 ? Theme.red : modelData.v >= 0.7 ? Theme.orange : island.agentColor
+                color: modelData.v >= 0.9 ? Theme.red : modelData.v >= 0.7 ? Theme.orange : page.tint
               }
             }
             Label { text: Math.round(modelData.v * 100) + "%"; font.pixelSize: 12; tabular: true; color: Theme.secondary; anchors.verticalCenter: parent.verticalCenter }
@@ -194,6 +489,7 @@ Page {
           height: 58
           radius: 18
           color: rowMouse.containsMouse || watched ? Theme.fillHover : Theme.fill
+          GlassSheen { takeFill: true; fill: row.watched ? Theme.fillHover : Theme.fill; lit: rowMouse.containsMouse; pressed: rowMouse.pressed }
           border.width: waiting ? 1 : 0
           border.color: island.profile(s.agent).color
           Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
@@ -328,7 +624,8 @@ Page {
       width: parent.width
       height: big ? 340 : 168
       radius: 16
-      color: Qt.rgba(1, 1, 1, 0.05)
+      color: Theme.ink(0.05)
+GlassSheen {}
       border.width: 1
       border.color: Theme.hairline
       // Quick and soft: starts at once, eases out.
@@ -500,7 +797,7 @@ Page {
         width: 3
         height: Math.max(16, feedList.visibleArea.heightRatio * feedList.height)
         radius: 1.5
-        color: Qt.rgba(1, 1, 1, 0.22)
+        color: Theme.ink(0.22)
       }
     }
 
@@ -515,6 +812,7 @@ Page {
       height: 42
       radius: 21
       color: field.activeFocus ? Theme.fillHover : Theme.fill
+      GlassSheen {}
       border.width: field.activeFocus ? 1 : 0
       border.color: tint
       Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
@@ -543,7 +841,7 @@ Page {
         clip: true
         color: Theme.fg
         selectionColor: composer.tint
-        selectedTextColor: "#000000"
+        selectedTextColor: Theme.onTint
         selectByMouse: true
         font.family: Theme.font
         font.pixelSize: 13
@@ -600,7 +898,8 @@ Page {
 
     // ---- empty / setup state
     Rectangle {
-      visible: page.sessions.length === 0
+      // (only on an agent's own page)
+      visible: page.sessions.length === 0 && !page.overview
       width: parent.width
       height: 72
       radius: 18
@@ -614,8 +913,8 @@ Page {
         spacing: 3
         Label {
           width: parent.width
-          text: !page.connectable ? I18n.t("%1 canlı oturum paylaşmıyor").arg(island.agentProduct)
-            : page.connected ? I18n.t("Aktif oturum yok") : I18n.t("%1 bağlı değil").arg(island.agentProduct)
+          text: !page.connectable ? I18n.t("%1 canlı oturum paylaşmıyor").arg(page.product)
+            : page.connected ? I18n.t("Aktif oturum yok") : I18n.t("%1 bağlı değil").arg(page.product)
           font.pixelSize: 14
           strong: true
         }
@@ -638,22 +937,24 @@ Page {
         size: 36
         text: I18n.t("Bağla")
         prominent: true
-        tint: island.agentColor
-        accessibleName: I18n.t("%1 bağlantısını kur").arg(island.agentProduct)
-        onClicked: agents.installHooks(island.agentId)
+        tint: page.tint
+        accessibleName: I18n.t("%1 bağlantısını kur").arg(page.product)
+        onClicked: agents.installHooks(page.agentId)
       }
     }
 
     // ---- shortcuts
     Row {
+      visible: !page.overview
       spacing: 8
+      RefreshButton { size: 36; anchors.verticalCenter: parent.verticalCenter }
       IslandButton {
         size: 36
         icon: "plus"
         text: I18n.t("Yeni oturum")
         fontSize: 13
-        accessibleName: I18n.t("Yeni ") + island.agentName + I18n.t(" oturumu")
-        onClicked: { agents.newSession(); island.collapse() }
+        accessibleName: I18n.t("Yeni ") + page.profile.name + I18n.t(" oturumu")
+        onClicked: { agents.newSession(page.agentId); island.collapse() }
       }
       IslandButton {
         size: 36

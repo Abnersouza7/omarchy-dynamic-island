@@ -7,9 +7,7 @@ import "../components"
 // two activities run at once. `side` is +1 (right of the island) or -1 (left).
 // It emerges from under the island's edge on a spring and tucks back in.
 //
-//   click         open that activity (stop, for a screen recording; for the
-//                 shelf: put what is on the clipboard on the shelf, or open
-//                 it when the clipboard holds nothing new)
+//   click         open that activity (stop, for a screen recording)
 //   double-click  swap it with the center: it moves into the island and the
 //                 center activity takes this bubble's place
 //   right-click   same swap
@@ -40,9 +38,14 @@ Item {
   x: tucked ? restX - side * width * 0.9 : restX
   scale: shown ? 1 : (tucked ? 0.3 : 0.85)
   opacity: shown ? 1 : 0
-  z: -1
+  // Under the island so it slides out from its edge; with glass on, above
+  // it: the island's glass is painted in the stage, over anything below,
+  // and would dim the bubble's icon.
+  z: island.glassOn ? 1 : -1
 
   readonly property bool hovered: mouse.containsMouse
+  // Drawn size and place, for the glass surface.
+  readonly property real bodyScale: body.scale * scale
 
   Behavior on x {
     enabled: !Theme.reduceMotion
@@ -60,7 +63,7 @@ Item {
       case "music": return (i.music.title || I18n.t("Müzik")) + (i.music.artist ? " — " + i.music.artist : "")
       case "timer": return (i.timer.mode === "stopwatch" ? I18n.t("Kronometre ") : I18n.t("Sayaç ")) + i.timer.display + (i.timer.paused ? I18n.t(" (duraklatıldı)") : "")
       case "recording": return I18n.t("Ekran kaydı ") + i.duration(i.nowMs - i.recording.startedAt) + I18n.t(" · durdurmak için tıkla")
-      case "shelf": return I18n.t("Raf") + " · " + I18n.count(i.shelf.count, "item") + I18n.t(" · tıkla: panodakini ekle")
+      case "shelf": return I18n.t("Raf") + " · " + I18n.count(i.shelf.count, "item")
       case "agent": {
         var s = i.agents.focusSession
         return i.profile(s ? s.agent : "").name + (s && s.project ? " · " + s.project : "") + (i.agents.pending.length ? I18n.t(" · izin bekliyor") : "")
@@ -70,7 +73,6 @@ Item {
   }
 
   function activate() {
-    if (kind === "shelf") { island.shelf.addFromClipboard(); return }
     if (kind === "recording") {
       island.recording.stop()
       island.peek("record", I18n.t("Kayıt durduruluyor"), "", Theme.red, 1500)
@@ -80,7 +82,8 @@ Item {
   }
 
   // Music in a bubble: the ambient backlight glows around it instead of
-  // the island (same colors and softness as the island's).
+  // the island (same colors and softness as the island's). With HyprGlass
+  // the island draws it on its glow layer instead.
   RectangularShadow {
     readonly property real level: island.audio.available && island.audio.active ? island.audio.level : 0.45
     property color tint: island.music.ambient[0]
@@ -91,7 +94,7 @@ Item {
     blur: 14 + level * 6
     spread: -2 + level * 2
     color: Qt.rgba(tint.r, tint.g, tint.b, 0.28 + level * 0.3)
-    opacity: island.ambientOn && bubble.kind === "music" && bubble.shown ? 1 : 0
+    opacity: island.ambientOn && bubble.kind === "music" && bubble.shown && !island.hyprGlassOn ? 1 : 0
     visible: opacity > 0.01
     Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
   }
@@ -100,9 +103,11 @@ Item {
     id: body
     anchors.fill: parent
     radius: width / 2
-    color: Theme.bg
-    border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.06)
+    // With Liquid Glass the island's glass surface draws this body (so it
+    // can merge with the island); the bubble only holds its content.
+    color: island.glassOn ? "transparent" : Theme.bg
+    border.width: island.glassOn ? 0 : 1
+    border.color: Theme.edge
     scale: (mouse.pressed ? 0.88 : bubble.hovered ? 1.08 : 1) * bubble.pop
     Behavior on scale {
       enabled: !Theme.reduceMotion
@@ -201,7 +206,7 @@ Item {
     radius: 15
     color: Theme.bg
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.10)
+    border.color: Theme.edge
     opacity: open ? 1 : 0
     visible: opacity > 0.01
     Behavior on opacity { NumberAnimation { duration: Theme.ms(160) } }

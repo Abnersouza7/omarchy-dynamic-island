@@ -1,11 +1,15 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../components/Agents.js" as Agents
 
 // Live model of every coding-agent session on the machine (Claude Code,
-// Codex, Gemini CLI via bin/dynamic-island-hook; OpenCode via its plugin),
-// fed over a unix socket. Permission requests keep their connection open;
-// answering writes the verdict back down that same connection.
+// Codex, Antigravity CLI via bin/dynamic-island-hook; OpenCode via its
+// plugin), fed over a unix socket. Permission requests keep their connection
+// open; answering writes the verdict back down that same connection.
+// Antigravity has no permission event and ignores a hook's "allow": the
+// island notices its prompt (see "Antigravity prompts" below) and answers it
+// with a key press in agy's own terminal.
 //
 // ════════════════════════════════════════════════════════════════ STATES
 //
@@ -16,7 +20,7 @@ import Quickshell.Io
 //   compacting   the context is being compacted
 //   waiting      (derived) a permission request is open on the island
 //   notice       the agent asked for permission in its own terminal and
-//                cannot hand it to the island (Gemini CLI)
+//                cannot hand it to the island
 //   input        the agent is waiting for you: a question, an MCP
 //                elicitation, or "waiting for your input" after a while
 //   done         the turn finished normally
@@ -33,7 +37,7 @@ import Quickshell.Io
 //
 //   event                 sent by                 effect
 //   ──────────────────────────────────────────────────────────────────────
-//   SessionStart          Claude, Codex, Gemini,  new session → ready.
+//   SessionStart          Claude, Codex,          new session → ready.
 //                         OpenCode                source "compact": stays as the
 //                                                 compaction left it (see below)
 //   UserPromptSubmit      all                     → thinking; starts the turn clock
@@ -47,17 +51,20 @@ import Quickshell.Io
 //                                                 answer in the terminal
 //   PermissionResolved    OpenCode                closes the island request
 //   PermissionDenied      Claude (auto mode)      → thinking (Claude carries on)
-//   PermissionNotice      Gemini                  → notice (answer in terminal)
+//   (agy prompt)          Antigravity             PreToolUse of a gated tool, no
+//                                                 PostToolUse and no child process
+//                                                 after ~1 s → key-press request
+//                                                 (→ waiting)
 //   Question              Claude                  → input with the question text
 //                         (AskUserQuestion)
-//   Notification          Claude, Gemini          idle_prompt / elicitation_dialog
+//   Notification          Claude                  idle_prompt / elicitation_dialog
 //                                                 → input + banner; others ignored
 //   Elicitation           Claude                  → input + banner
-//   PreCompact            Claude, Codex, Gemini   → compacting (remembers trigger)
+//   PreCompact            Claude, Codex           → compacting (remembers trigger)
 //   PostCompact           Claude, Codex           manual → ready, auto → thinking
 //   Stop                  all                     → done + "finished" banner
 //   StopFailure           Claude                  → error + banner
-//   Interrupt             Codex                   → interrupted
+//   Interrupt             Codex, Antigravity      → interrupted
 //   SessionEnd            all                     session removed
 //
 //   Signals the agents never send, and how they are recovered:
@@ -92,7 +99,24 @@ Item {
   readonly property string home: Quickshell.env("HOME") || ""
   property string defaultAgent: ""   // Omarchy's default agent id
   // Usage records written by Omarchy's agents panel (claude.json, codex.json…).
-  readonly property string usagePath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/" + (defaultAgent || "claude") + ".json"
+  // The agent whose usage is shown (the AI page's agent). Omarchy's agents
+  // panel writes usage records for Claude and Codex; Antigravity's comes
+  // from `agy -p /usage` (see below).
+  property string usageAgent: ""
+  readonly property string usageFor: usageAgent || defaultAgent || "claude"
+  // Agents whose usage is wanted at once (Home shows every running agent).
+  property var usageAgents: []
+  readonly property var noUsage: ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+  readonly property string usageDir: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/"
+  // agent id → { session, weekly, sessionResets, weeklyResets } (0..1 used)
+  property var usageByAgent: ({})
+  function usageOf(id) { return usageByAgent[id] || noUsage }
+  function setUsage(id, u) {
+    var next = {}
+    for (var k in usageByAgent) next[k] = usageByAgent[k]
+    next[id] = u
+    usageByAgent = next
+  }
 
   // A busy turn with no event and no transcript write for this long is shown
   // as "quiet". Long enough for a slow model to think without tools.
@@ -108,7 +132,7 @@ Item {
   property var sessionList: []
   property var pending: []          // oldest first
   property var sockets: ({})        // request id -> Socket
-  property var usage: ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+  readonly property var usage: usageOf(usageFor)
 
   readonly property bool listening: server.active
   readonly property var currentRequest: pending.length > 0 ? pending[0] : null
@@ -219,6 +243,17 @@ Item {
   function sessionFor(msg) {
     var id = msg.session || "unknown"
     var s = sessions[id]
+    if (!s && msg.agentPid) {
+      // A placeholder from the scan (no id yet) for this same process.
+      for (var k in sessions) {
+        var o = sessions[k]
+        if (o.agentPid === msg.agentPid && o.agent === msg.agent && /-\d+$/.test(k) && k !== id) {
+          var next = {}
+          for (var j in sessions) if (j !== k) next[j] = sessions[j]
+          sessions = next
+        }
+      }
+    }
     if (!s) {
       s = {
         id: id, agent: msg.agent || "", state: "ready", project: msg.project || "", cwd: msg.cwd || "",
@@ -334,10 +369,16 @@ Item {
       s.detail = msg.detail || ""
       s.toolCount += 1
       if (!s.turnStartedAt) s.turnStartedAt = now()
+      if (msg.agent === "antigravity") {
+        // A new step means any earlier prompt of this session was answered.
+        pending.filter(r => r.session === s.id && r.step !== msg.step).forEach(r => dropRequest(r.id, "elsewhere"))
+        s.agyStep = msg.gated ? { step: msg.step, at: now(), quiet: 0 } : null
+      }
       break
 
     case "PostToolUse":
       if (s.state === "tool" || s.state === "notice" || s.state === "input") s.state = "thinking"
+      s.agyStep = null
       break
 
     case "PostToolUseFailure":
@@ -399,6 +440,7 @@ Item {
       break
 
     case "Stop":
+      s.agyStep = null
       endTurn(s, "done")
       commit(s)
       sessionFinished(s)
@@ -445,6 +487,8 @@ Item {
   // behavior: "allow" | "always" | "deny"
   function respond(requestId, behavior, message) {
     var id = requestId || (currentRequest ? currentRequest.id : "")
+    var keyReq = pending.find(r => r.id === id && r.via === "keys")
+    if (keyReq) return answerWithKey(keyReq, behavior)
     var socket = sockets[id]
     if (!socket) return false
     var reply = { behavior: behavior }
@@ -465,6 +509,126 @@ Item {
     }
     dropRequest(id, behavior)
     return true
+  }
+
+  // ---------------------------------------------------------------- Antigravity prompts
+
+  // agy asks before running a command or touching a file, but tells no hook
+  // about it, and a hook's "allow" does not skip its prompt. Its own log
+  // (the cli-*.log the agy process holds open) does say it:
+  //   Surfacing tool confirmation: "RunCommand" at step N   → it is asking
+  //   Responding to tool confirmation: … stepIdx=N …         → answered there
+  //   Interrupt cleared pending tool confirmation / Cancelling conversation
+  //                                                          → cancelled there
+  // N is the stepIdx the hook reports. So while a gated step is open
+  // (s.agyStep) or an island request is, the end of that log is read every
+  // 400 ms. Without the log (another agy build), the fallback is: no
+  // PostToolUse and no child process twice in a row (a running command is
+  // always a child of agy). Answers are the prompt's own keys: 1 run,
+  // 2 allow for this conversation, Esc cancel.
+  readonly property var agyWatch: sessionList.filter(s => s.agent === "antigravity" && s.agentPid
+    && ((s.agyStep && s.state === "tool") || hasPending(s.id)))
+  Timer {
+    interval: 400
+    repeat: true
+    running: bridge.agyWatch.length > 0
+    onTriggered: {
+      if (agyProbe.running) return
+      var due = bridge.agyWatch.filter(s => bridge.hasPending(s.id) || bridge.now() - s.agyStep.at > 300)
+      if (!due.length) return
+      agyProbe.ids = due.map(s => s.id)
+      // Per session: "<pid>\t<children>\t<last confirmation line>".
+      agyProbe.command = ["sh", "-c",
+        "for p; do log=$(ls -l /proc/$p/fd 2>/dev/null | grep -o '/[^ ]*/log/cli-[^ ]*[.]log' | head -n 1); " +
+        "last=; [ -n \"$log\" ] && last=$(tail -c 16384 \"$log\" | grep -E 'Surfacing tool confirmation|Responding to tool confirmation|Interrupt cleared pending tool confirmation|Cancelling conversation' | tail -n 1); " +
+        "printf '%s\\t%s\\t%s\\t%s\\n' \"$p\" \"$(pgrep -c -P \"$p\")\" \"${log:+log}\" \"$last\"; done", "sh"]
+        .concat(due.map(s => String(s.agentPid)))
+      agyProbe.running = true
+    }
+  }
+  Process {
+    id: agyProbe
+    property var ids: []
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var byPid = {}
+        text.split("\n").forEach(l => {
+          var p = l.split("\t")
+          if (p.length >= 4) byPid[p[0]] = { children: Number(p[1]) || 0, hasLog: p[2] === "log", last: p.slice(3).join("\t") }
+        })
+        agyProbe.ids.forEach(id => {
+          var s = bridge.sessions[id]
+          var info = s ? byPid[String(s.agentPid)] : null
+          if (!s || !info) return
+          var req = bridge.pending.find(r => r.session === id && r.via === "keys")
+          if (info.hasLog) {
+            var asking = info.last.match(/Surfacing tool confirmation: .* at step (\d+)/)
+            var answered = info.last.indexOf("Responding to tool confirmation") !== -1
+            var cancelled = info.last.indexOf("Interrupt cleared pending") !== -1 || info.last.indexOf("Cancelling conversation") !== -1
+            if (asking && !req && s.agyStep && s.state === "tool" && String(asking[1]) === String(s.agyStep.step)) {
+              bridge.openKeyRequest(s)
+            } else if (req && answered) {
+              bridge.logEvent({ event: "(request answered in terminal)", session: id, agent: s.agent, tool: req.tool }, "agy log")
+              bridge.dropRequest(req.id, "elsewhere")
+            } else if (req && cancelled) {
+              bridge.logEvent({ event: "(request cancelled in terminal)", session: id, agent: s.agent, tool: req.tool }, "agy log")
+              bridge.dropRequest(req.id, "elsewhere")
+              s.agyStep = null
+              bridge.setState(id, "interrupted", "agy: cancelled at its prompt")
+            }
+            return
+          }
+          // No log: infer from the process tree.
+          if (req || !s.agyStep || s.state !== "tool") return
+          if (info.children > 0) { s.agyStep.quiet = 0; return }
+          s.agyStep.quiet += 1
+          if (s.agyStep.quiet >= 3) bridge.openKeyRequest(s)
+        })
+      }
+    }
+  }
+
+  function openKeyRequest(s) {
+    var request = {
+      id: "agy-" + s.id.substring(0, 8) + "-" + s.agyStep.step,
+      agent: s.agent, session: s.id, project: s.project, cwd: s.cwd,
+      tool: s.tool, title: s.title, detail: s.detail,
+      canAlways: true, mode: "", at: now(),
+      via: "keys", step: s.agyStep.step, pids: s.pids || []
+    }
+    logEvent({ event: "(agy prompt)", session: s.id, agent: s.agent, tool: s.tool }, "gated tool waiting, no child process")
+    pending = pending.concat([request])
+    commit(s)
+    permissionArrived(request)
+  }
+
+  // Presses the prompt's key in agy's terminal (tmux in the background, or
+  // its own window, matched exactly) via bin/dynamic-island-send --key.
+  signal keyAnswerFailed(string sessionId)
+  function answerWithKey(req, behavior) {
+    if (keySender.running) return false
+    var key = behavior === "allow" ? "1" : behavior === "always" ? "2" : "Escape"
+    keySender.forId = req.session
+    keySender.command = [pluginDir + "/bin/dynamic-island-send", "--key", key].concat((req.pids || []).map(String))
+    keySender.running = true
+    logEvent({ event: "(answered " + behavior + " on island)", session: req.session, agent: req.agent, tool: req.tool }, "key " + key)
+    var s = sessions[req.session]
+    if (s) {
+      s.agyStep = null
+      // Esc at agy's prompt cancels the whole turn and agy reports nothing
+      // more ("Interrupted · What should Antigravity CLI do instead?").
+      if (behavior === "deny") endTurn(s, "interrupted")
+      else s.state = "tool"
+      s.updatedAt = now()
+      commit(s)
+    }
+    dropRequest(req.id, behavior)
+    return true
+  }
+  Process {
+    id: keySender
+    property string forId: ""
+    onExited: code => { if (code !== 0) bridge.keyAnswerFailed(forId) }
   }
 
   // An open island request whose prompt was evidently answered in the
@@ -640,7 +804,7 @@ Item {
   // bin/dynamic-island-transcript. Claude Code and Codex only, the two that
   // hand their hooks a transcript path. It is read only while someone looks
   // at it (`previewId` is set by the agent page while it is open).
-  readonly property var previewAgents: ["claude", "codex"]
+  readonly property var previewAgents: ["claude", "codex", "antigravity"]
   property string previewId: ""
   property var previewItems: []
   property string previewOf: ""        // session the items belong to
@@ -730,9 +894,54 @@ Item {
     if (s && s.cwd) Quickshell.execDetached(["omarchy-launch-editor", s.cwd])
   }
 
-  function newSession() {
-    Quickshell.execDetached(["omarchy-agent"])
+  // Opens a new session of the island's agent: Omarchy's own launcher when it
+  // is Omarchy's default agent, otherwise the same kind of terminal window
+  // (in ~/Work when it exists, as Omarchy does).
+  property string omarchyAgent: ""
+  function newSession(agentId) {
+    var id = agentId || defaultAgent || omarchyAgent
+    var p = Agents.get(id)
+    if (!id || id === omarchyAgent || !p.launch) { Quickshell.execDetached(["omarchy-agent", "--pick"]); return }
+    Quickshell.execDetached(["sh", "-c", "[ -d \"$HOME/Work\" ] && cd \"$HOME/Work\"; exec omarchy-launch-tui --app-id=org.omarchy.agent \"$@\"", "sh"].concat(p.launch))
   }
+
+  // ---------------------------------------------------------------- scan
+
+  // Finds the agent sessions open right now (bin/dynamic-island-scan), for
+  // when no hook has spoken yet: after a shell restart, or a session started
+  // before the island. Run at start and from the AI page's refresh button.
+  // Known sessions only get missing details; new ones come in idle (or
+  // working, when Claude Code says it is busy). A session found without an
+  // id ("agy-<pid>"…) is replaced by the real one at its first hook event.
+  signal scanned(int found, int added)
+  property bool scanning: scanner.running
+  function scan() { if (!scanner.running) scanner.running = true }
+  Process {
+    id: scanner
+    command: [bridge.pluginDir + "/bin/dynamic-island-scan"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var found = 0, added = 0
+        text.split("\n").forEach(line => {
+          var m
+          try { m = JSON.parse(line) } catch (e) { return }
+          if (!m || !m.session || !m.agent) return
+          found++
+          var known = bridge.sessions[m.session]
+          var s = bridge.sessionFor({ session: m.session, agent: m.agent, cwd: m.cwd, project: m.project,
+                                      pids: m.pids, agentPid: m.agentPid, transcript: m.transcript })
+          if (!known) {
+            added++
+            if (m.busy) { bridge.startTurn(s) } else { s.state = "ready" }
+            bridge.logEvent({ event: "(found by scan)", session: m.session, agent: m.agent })
+          }
+          bridge.commit(s)
+        })
+        bridge.scanned(found, added)
+      }
+    }
+  }
+  Timer { running: bridge.pluginDir !== ""; interval: 1500; onTriggered: bridge.scan() }
 
   // ---------------------------------------------------------------- liveness
 
@@ -798,34 +1007,82 @@ Item {
   }
 
   function openUsage() {
+    if (usageFor === "antigravity") { agyUsageRefresh(); return }
     Quickshell.execDetached(["omarchy-shell", "-q", "omarchy.agents", "open"])
   }
 
   // ---------------------------------------------------------------- usage
 
-  FileView {
-    path: bridge.usagePath
-    watchChanges: true
-    printErrors: false
-    onPathChanged: bridge.usage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
-    onLoadFailed: bridge.usage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
-    onFileChanged: reload()
-    onLoaded: {
-      try {
-        var rec = JSON.parse(text())
-        var out = { session: -1, weekly: -1, sessionResets: "", weeklyResets: "" }
-        var limits = rec.limits || []
-        for (var i = 0; i < limits.length; i++) {
-          var l = limits[i]
-          var label = String(l.label || "").toLowerCase()
-          if (label.indexOf("session") !== -1 || label.indexOf("5-hour") !== -1) {
-            out.session = Number(l.percent); out.sessionResets = l.resetsAt || ""
-          } else if (label.indexOf("week") !== -1) {
-            out.weekly = Number(l.percent); out.weeklyResets = l.resetsAt || ""
+  // Omarchy's agents panel keeps a usage record per agent it knows
+  // (claude.json, codex.json); each is watched.
+  Instantiator {
+    model: ["claude", "codex"]
+    delegate: FileView {
+      required property string modelData
+      path: bridge.usageDir + modelData + ".json"
+      watchChanges: true
+      printErrors: false
+      onFileChanged: reload()
+      onLoadFailed: bridge.setUsage(modelData, bridge.noUsage)
+      onLoaded: {
+        try {
+          var rec = JSON.parse(text())
+          var out = { session: -1, weekly: -1, sessionResets: "", weeklyResets: "" }
+          var limits = rec.limits || []
+          for (var i = 0; i < limits.length; i++) {
+            var l = limits[i]
+            var label = String(l.label || "").toLowerCase()
+            if (label.indexOf("session") !== -1 || label.indexOf("5-hour") !== -1) {
+              out.session = Number(l.percent); out.sessionResets = l.resetsAt || ""
+            } else if (label.indexOf("week") !== -1) {
+              out.weekly = Number(l.percent); out.weeklyResets = l.resetsAt || ""
+            }
           }
-        }
-        bridge.usage = out
-      } catch (e) {}
+          bridge.setUsage(modelData, out)
+        } catch (e) {}
+      }
     }
   }
+  // ---- Antigravity: `agy -p /usage` prints one tab-separated line per
+  // limit ("Gemini Models<TAB>Five Hour Limit Remaining<TAB>97%<TAB><reset>"),
+  // locally, without a model call or a new conversation. The group shown is
+  // the one of the model agy is set to (its settings.json), else the first.
+  // Read while Antigravity's usage is on screen, every 5 minutes, and after
+  // each of its turns.
+  function agyUsageRefresh() { if (!agyUsageProbe.running) agyUsageProbe.running = true }
+  Process {
+    id: agyUsageProbe
+    workingDirectory: bridge.home || "/tmp"
+    command: ["sh", "-c", "command -v agy >/dev/null || exit 0; " +
+      "m=$(sed -n 's/.*\"model\": *\"\\([^\"]*\\)\".*/\\1/p' \"$HOME/.gemini/antigravity-cli/settings.json\" 2>/dev/null | head -n 1); " +
+      "printf 'model\\t%s\\n' \"$m\"; timeout 30 agy -p /usage 2>/dev/null | head -c 8192"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var model = "", rows = []
+        text.split("\n").forEach(l => {
+          var c = l.split("\t")
+          if (c[0] === "model") model = (c[1] || "").toLowerCase()
+          else if (c.length >= 4 && /\d+%/.test(c[2])) rows.push({ group: c[0], label: c[1].toLowerCase(), left: parseFloat(c[2]) / 100, reset: c[3] })
+        })
+        if (!rows.length) return
+        var groups = rows.map(r => r.group).filter((g, i, a) => a.indexOf(g) === i)
+        var group = groups.find(g => model && model.indexOf(g.split(" ")[0].toLowerCase()) !== -1) || groups[0]
+        var out = { session: -1, weekly: -1, sessionResets: "", weeklyResets: "", group: group }
+        rows.filter(r => r.group === group).forEach(r => {
+          if (r.label.indexOf("five hour") !== -1 || r.label.indexOf("5") !== -1) { out.session = Math.max(0, 1 - r.left); out.sessionResets = r.reset }
+          else if (r.label.indexOf("week") !== -1) { out.weekly = Math.max(0, 1 - r.left); out.weeklyResets = r.reset }
+        })
+        bridge.setUsage("antigravity", out)
+      }
+    }
+  }
+  Timer {
+    interval: 300000
+    repeat: true
+    running: bridge.usageFor === "antigravity" || bridge.usageAgents.indexOf("antigravity") !== -1
+    triggeredOnStart: true
+    onTriggered: bridge.agyUsageRefresh()
+  }
+  onSessionFinished: session => { if (session && session.agent === "antigravity") agyUsageRefresh() }
+
 }

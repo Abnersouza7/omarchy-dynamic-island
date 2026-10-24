@@ -2,13 +2,18 @@ import QtQuick
 import Quickshell.Widgets
 
 // Rounded album art with a glyph placeholder while nothing (or nothing yet)
-// has loaded.
+// has loaded. `source` is the original (a player's art URL, a shelf file);
+// what is shown is ArtCache's bounded copy of it, never the original.
 ClippingRectangle {
   id: art
 
   property string source: ""
   property string placeholder: "music"
-  readonly property bool ready: image.status === Image.Ready
+  readonly property string safeSource: ArtCache.lookup(source, ArtCache.revision)
+  readonly property bool ready: image.status === Image.Ready && safeSource !== ""
+
+  onSourceChanged: ArtCache.request(source)
+  Component.onCompleted: ArtCache.request(source)
 
   color: Theme.fill
   radius: Math.round(width * 0.22)
@@ -27,7 +32,7 @@ ClippingRectangle {
   Image {
     id: image
     anchors.fill: parent
-    source: art.source
+    source: art.safeSource
     fillMode: Image.PreserveAspectCrop
     asynchronous: true
     cache: true
