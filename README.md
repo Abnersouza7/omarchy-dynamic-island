@@ -10,6 +10,30 @@ right from the island.
 
 ![Dynamic Island](preview.png)
 
+## This fork
+
+Fork of [ofa14-prog/omarchy-dynamic-island](https://github.com/ofa14-prog/omarchy-dynamic-island) with
+features ported from [latto](https://github.com/Fadilix/latto):
+
+- **Notifications** tab (recent history, Do Not Disturb, clear all) and banners on the island; clicking
+  a banner runs the app's default action.
+- **Stats** tab: CPU, memory, network, disk with history; click CPU or Memory for the top apps.
+- **Controls** tab: Wi-Fi, Bluetooth, Do Not Disturb, night light, microphone, stay awake; month calendar.
+- OSD (volume, brightness, mic…) as a peek with a level bar; low battery, Bluetooth connect, Caps Lock.
+- Mic (orange) / camera (green) / Caps Lock / DND marks left of the island.
+- A clock on every monitor that doesn't have the island (`"otherScreensClock": false` turns it off).
+
+Notifications and the OSD come from Omarchy's own services, so two built-ins need a one-line change each.
+Clone them (`omarchy plugin clone omarchy.osd`, `omarchy plugin clone omarchy.notifications`), then:
+
+- `<you>.osd/Osd.qml`: in `open()`, send the payload to `omarchy-shell dynamicisland osd '<json>'`
+  (`{key, glyph, message, progress 0..1 or -1, duration}`, from `OsdModel.stateForShow`) instead of
+  `show()`; fall back to `show()` when the reply isn't `ok`.
+- `<you>.notifications/Service.qml`: the popup `PanelWindow` gets `visible: false` (the island reads the
+  popup files in `~/.local/state/omarchy/notifications/`).
+
+Without the clones everything else works; you just get Omarchy's own OSD and toasts.
+
 ## Screenshots
 
 **Closed**: the agent at work in the middle, music and a timer split off into bubbles.

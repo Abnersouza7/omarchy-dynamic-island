@@ -34,6 +34,14 @@ ICONS = {
     "chat": ("chat-round-dots", "Outline"), "arrow-up-right": ("arrow-right-up", "Outline"),
     "arrow-up": ("arrow-up", "Outline"), "send": ("send", "Filled"),
     "bell": ("bell", "Outline"), "globe": ("globe", "Outline"), "sparkles": ("sparkles", "Outline"), "record": ("record-circle", "Filled"),
+    "volume": ("volume-high", "Outline"), "volume-mute": ("volume-mute", "Outline"),
+    "sun": ("sun", "Outline"), "moon": ("moon", "Outline"),
+    "wifi": ("wifi", "Outline"), "wifi-off": ("wifi-off", "Outline"), "bluetooth": ("bluetooth", "Outline"),
+    "mic": ("microphone", "Outline"), "mic-off": ("microphone-slash", "Outline"),
+    "cpu": ("cpu", "Outline"), "chart": ("chart", "Outline"), "bell-off": ("bell-off", "Outline"),
+    "keyboard": ("keyboard", "Outline"), "cup": ("cup-hot", "Outline"), "calendar": ("calendar", "Outline"),
+    "sliders": ("sliders", "Outline"), "chevron-left": ("chevron-left", "Outline"),
+    "chevron-right": ("chevron-right", "Outline"), "battery-low": ("battery-low", "Outline"),
 }
 
 

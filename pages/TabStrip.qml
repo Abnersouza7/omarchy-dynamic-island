@@ -15,13 +15,18 @@ Page {
     music:  { icon: "music",  name: I18n.t("Müzik") },
     agent:  { icon: island.agentLogo ? "" : "sparkles", name: island.agentName },
     timer:  { icon: "timer",  name: I18n.t("Sayaç") },
-    shelf:  { icon: "shelf",  name: I18n.t("Raf") }
+    shelf:  { icon: "shelf",  name: I18n.t("Raf") },
+    notifications: { icon: "bell", name: I18n.t("Bildirimler") },
+    stats:  { icon: "chart",  name: I18n.t("Sistem") },
+    controls: { icon: "sliders", name: I18n.t("Kontroller") }
   })
-  readonly property var names: ({ home: I18n.t("Ana sayfa"), music: I18n.t("Müzik"), agent: island.agentProduct, timer: I18n.t("Zamanlayıcı"), shelf: I18n.t("Raf") })
+  readonly property var names: ({ home: I18n.t("Ana sayfa"), music: I18n.t("Müzik"), agent: island.agentProduct, timer: I18n.t("Zamanlayıcı"), shelf: I18n.t("Raf"), notifications: I18n.t("Bildirimler"), stats: I18n.t("Sistem"), controls: I18n.t("Kontroller") })
 
   readonly property int closeSize: 36
   readonly property real segment: (width - closeSize - 8) / Math.max(1, island.pages.length)
   readonly property int currentIndex: island.pages.indexOf(island.page)
+  // With many tabs the segments only fit their icons; names stay for screen readers.
+  readonly property bool iconsOnly: segment < 76
 
   Accessible.role: Accessible.PageTabList
 
@@ -86,10 +91,10 @@ Page {
       readonly property real room: strip.segment - 14
       TextMetrics { id: wide; font.family: Theme.font; font.pixelSize: 13; font.weight: Font.DemiBold; text: tab.info.name }
       readonly property int fontSize: 25 + wide.advanceWidth <= room ? 13 : 12
-      readonly property bool showIcon: 25 + Math.min(wide.advanceWidth, label.implicitWidth) <= room
+      readonly property bool showIcon: strip.iconsOnly || 25 + Math.min(wide.advanceWidth, label.implicitWidth) <= room
       Item {
         anchors.centerIn: parent
-        width: (tab.showIcon ? 25 : 0) + label.width
+        width: strip.iconsOnly ? 18 : (tab.showIcon ? 25 : 0) + label.width
         height: 18
         Icon {
           visible: tab.showIcon
@@ -102,6 +107,7 @@ Page {
         }
         Label {
           id: label
+          visible: !strip.iconsOnly
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
           width: Math.min(implicitWidth, tab.room - (tab.showIcon ? 25 : 0))
@@ -115,13 +121,14 @@ Page {
 
       // Badges: pending permissions, shelf count.
       Rectangle {
-        readonly property int n: tab.key === "agent" ? island.agents.pending.length : tab.key === "shelf" ? island.shelf.count : 0
+        readonly property int n: tab.key === "agent" ? island.agents.pending.length : tab.key === "shelf" ? island.shelf.count
+          : tab.key === "notifications" ? island.notifications.unseen : 0
         visible: n > 0 && !tab.current
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.rightMargin: 4
         width: Math.max(16, badgeText.implicitWidth + 8); height: 16; radius: 8
-        color: tab.key === "agent" ? island.agentColor : Theme.blue
+        color: tab.key === "agent" ? island.agentColor : tab.key === "notifications" ? Theme.red : Theme.blue
         Label { id: badgeText; anchors.centerIn: parent; text: parent.n; font.pixelSize: 10; strong: true; horizontalAlignment: Text.AlignHCenter }
       }
 

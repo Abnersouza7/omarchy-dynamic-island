@@ -9,6 +9,7 @@ Page {
   readonly property var info: island.peekData
   readonly property bool isAgent: info.icon.indexOf("agent") === 0
   readonly property bool isApp: info.icon.indexOf("app:") === 0
+  readonly property bool hasProgress: info.progress !== undefined && info.progress >= 0
   readonly property string agentLogo: isAgent ? island.logoFor(info.icon.split(":")[1] || island.agentId) : ""
 
   Accessible.role: Accessible.AlertMessage
@@ -33,9 +34,20 @@ Page {
       color: Qt.rgba(view.info.tint.r, view.info.tint.g, view.info.tint.b, 0.18)
       Icon {
         anchors.centerIn: parent
-        size: 20
+        visible: !view.info.glyph
+        size: view.isApp ? 26 : 20
         name: view.isApp ? "" : view.isAgent ? (view.agentLogo ? "" : "sparkles") : view.info.icon
         source: view.isApp ? view.info.icon.substring(4) : view.agentLogo
+        color: view.info.tint
+      }
+      // An OSD sent with a raw Nerd Font glyph instead of a known icon.
+      Text {
+        anchors.centerIn: parent
+        visible: !!view.info.glyph
+        textFormat: Text.PlainText
+        text: view.info.glyph || ""
+        font.family: Theme.icons
+        font.pixelSize: 18
         color: view.info.tint
       }
     }
@@ -56,10 +68,44 @@ Page {
     }
     Label {
       width: parent.width
-      visible: text !== ""
+      visible: text !== "" && !view.hasProgress
       text: view.info.subtitle
       font.pixelSize: 13
       color: Theme.secondary
+    }
+    // Volume, brightness…: a level bar instead of the second line.
+    Item {
+      visible: view.hasProgress
+      width: parent.width
+      height: 16
+      Rectangle {
+        id: track
+        anchors.left: parent.left
+        anchors.right: percent.left
+        anchors.rightMargin: 10
+        anchors.verticalCenter: parent.verticalCenter
+        height: 6
+        radius: 3
+        color: Theme.fill
+        Rectangle {
+          height: parent.height
+          radius: 3
+          width: parent.width * Math.max(0, Math.min(1, view.info.progress))
+          color: view.info.tint
+          Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+        }
+      }
+      Label {
+        id: percent
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        width: 38
+        horizontalAlignment: Text.AlignRight
+        text: view.info.subtitle
+        font.pixelSize: 12
+        tabular: true
+        color: Theme.secondary
+      }
     }
   }
 

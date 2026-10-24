@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Widgets
 import Quickshell.Services.UPower
+import Quickshell.Bluetooth
 import "components"
 import "services"
 import "pages"
@@ -370,6 +371,25 @@ Item {
   readonly property alias audio: audioSvc
   readonly property bool ambientOn: cfg("ambient") && musicLive && !fullscreenHidden
 
+  StatsService { id: statsSvc }
+  PrivacyService {
+    id: privacySvc
+    onCapsChanged: island.peek("keyboard", caps ? I18n.t("Caps Lock açık") : I18n.t("Caps Lock kapalı"), "", caps ? Theme.orange : Theme.secondary, 1200)
+  }
+  NotificationFeed {
+    id: notificationsSvc
+    onArrived: n => {
+      if (island.page === "notifications" && island.mode === "expanded") { unseen = 0; return }
+      var critical = n.urgency === 2
+      var icon = notificationsSvc.iconFor(n)
+      island.peek(icon ? "app:" + icon : "bell", n.summary || n.app, n.body || (n.summary ? n.app : ""),
+        critical ? Theme.red : Theme.fg, critical ? 10000 : 5000, "invoke")
+    }
+  }
+
+  readonly property alias stats: statsSvc
+  readonly property alias privacy: privacySvc
+  readonly property alias notifications: notificationsSvc
   readonly property alias agents: agentsSvc
   readonly property alias music: musicSvc
   readonly property alias timer: timerSvc
@@ -398,6 +418,64 @@ Item {
     }
   }
   Component.onCompleted: lastOnBattery = UPower.onBattery
+
+  // Low battery: once at 20 % and again at 10 %, only while discharging.
+  property int lowWarned: 100
+  onBatteryPercentChanged: {
+    if (!hasBattery) return
+    if (!UPower.onBattery || batteryPercent > 20) { lowWarned = 100; return }
+    var level = batteryPercent <= 10 ? 10 : 20
+    if (level < lowWarned) {
+      lowWarned = level
+      peek("battery-low", I18n.t("Pil azaldı"), Math.round(batteryPercent) + "%", Theme.red, 4000)
+    }
+  }
+
+  // Bluetooth devices connecting and disconnecting (with their battery when known).
+  Instantiator {
+    model: Bluetooth.devices
+    delegate: Connections {
+      required property var modelData
+      target: modelData
+      function onConnectedChanged() {
+        var d = modelData
+        island.peek("bluetooth", d.name || d.deviceName || "Bluetooth",
+          d.connected ? I18n.t("Bağlandı") + (d.batteryAvailable ? " · " + Math.round(d.battery * 100) + "%" : "") : I18n.t("Bağlantı kesildi"),
+          d.connected ? Theme.blue : Theme.secondary, 2200)
+      }
+    }
+  }
+
+  // ---- OSD
+  // Omarchy's on-screen display (volume, brightness, microphone, keyboard…)
+  // lands here: the local omarchy.osd clone (plugins/abner.osd) forwards
+  // every `omarchy-osd` call, already normalized.
+  readonly property var osdLook: ({
+    volume: ["volume", I18n.t("Ses")], muted: ["volume-mute", I18n.t("Ses kapalı")],
+    brightness: ["sun", I18n.t("Parlaklık")], mic: ["mic", I18n.t("Mikrofon")], micOff: ["mic-off", I18n.t("Mikrofon")],
+    keyboard: ["keyboard", I18n.t("Klavye")], media: ["music", ""]
+  })
+  function osd(p) {
+    var k = String(p.key || "")
+    var look = /^(volume-mute|volume-muted|muted|mute)$/.test(k) ? osdLook.muted
+      : k.indexOf("volume") === 0 ? osdLook.volume
+      : /^(brightness|display)$/.test(k) ? osdLook.brightness
+      : /^(microphone|mic)$/.test(k) ? osdLook.mic
+      : /^(microphone|mic)-(muted|off)$/.test(k) ? osdLook.micOff
+      : k === "keyboard" ? osdLook.keyboard
+      : /^(media|player)/.test(k) ? osdLook.media : null
+    var progress = Number(p.progress)
+    var hasProgress = !isNaN(progress) && progress >= 0
+    var title = hasProgress ? (look ? look[1] : "") : (p.message || (look ? look[1] : ""))
+    if (mode === "expanded" || !introDone) return
+    peekData = { icon: look ? look[0] : "", glyph: look ? "" : (p.glyph || ""), title: title,
+      subtitle: hasProgress ? (p.message || Math.round(progress * 100) + "%") : "", tint: look === osdLook.muted || look === osdLook.micOff ? Theme.secondary : Theme.fg,
+      target: "", progress: hasProgress ? progress : -1 }
+    springMode = "open"
+    mode = "peek"
+    peekTimer.interval = Math.max(900, Number(p.duration) || 1200)
+    peekTimer.restart()
+  }
 
   // ================================================================ clock
 
@@ -485,6 +563,7 @@ Item {
 
   property string mode: "compact"      // compact | peek | expanded
   property string page: "home"
+  onPageChanged: if (page === "notifications") notifications.unseen = 0
   property string openedBy: "pointer"  // pointer | key | alert
   property bool pointerVisited: false
   property bool dragHover: false
@@ -496,7 +575,7 @@ Item {
   readonly property var pages: {
     var list = ["home"]
     if (music.available) list.push("music")
-    list.push("agent", "timer", "shelf")
+    list.push("agent", "timer", "shelf", "notifications", "stats", "controls")
     return list
   }
 
@@ -826,6 +905,7 @@ Item {
     function timerStop(): string { island.timer.cancel(); return "ok" }
     function shelfAdd(path: string): string { return island.shelf.addUrls([path]) > 0 ? "ok" : "invalid" }
     function notify(title: string, subtitle: string): string { island.peek("bell", title, subtitle, Theme.fg, 3000); return "ok" }
+    function osd(payload: string): string { try { island.osd(JSON.parse(payload)) } catch (e) { return "bad-payload" } return "ok" }
     function shortcut(index: string): string { island.runShortcut(island.shortcuts[Number(index)]); return "ok" }
     function events(): string {
       var out = []
@@ -843,6 +923,36 @@ Item {
       return JSON.stringify({ agent: island.agentId, mode: island.mode, page: island.page, primary: island.primary, secondary: island.secondary, tertiary: island.tertiary,
         pending: agents.pending.length, sessions: agents.sessionList.length, listening: agents.listening,
         ambient: island.ambientOn, audio: island.audio.active ? Math.round(island.audio.level * 100) / 100 : -1 })
+    }
+  }
+
+  // ================================================================ other screens
+  // The island lives on one monitor (the focused one, unless `screen` is
+  // set); every other monitor gets just the clock in the same spot, hidden
+  // under a fullscreen window there. Display only: clicks pass through.
+  Variants {
+    model: island.cfg("otherScreensClock") === false ? [] : Quickshell.screens.filter(s => !window.screen || s.name !== window.screen.name)
+    PanelWindow {
+      id: clockWin
+      required property var modelData
+      readonly property var monitor: Hyprland.monitorFor(modelData)
+      screen: modelData
+      anchors { top: true; left: true; right: true }
+      implicitHeight: island.topY + island.compactH
+      color: "transparent"
+      exclusionMode: ExclusionMode.Ignore
+      WlrLayershell.namespace: "dynamic-island-clock"
+      WlrLayershell.layer: WlrLayer.Overlay
+      mask: Region {}
+      Label {
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: island.topY
+        height: island.compactH
+        text: island.clockText
+        strong: true
+        tabular: true
+        visible: island.introDone && !(clockWin.monitor && clockWin.monitor.activeWorkspace && clockWin.monitor.activeWorkspace.hasFullscreen)
+      }
     }
   }
 
@@ -1011,9 +1121,9 @@ Item {
           width: island.targetW
           height: island.targetH
           radius: island.targetR
-          color: Theme.bg
+          color: island.mode === "compact" ? "transparent" : Theme.bg  // local: invisible in the bar
           border.width: 1
-          border.color: island.mode === "compact" ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.10)
+          border.color: island.mode === "compact" ? "transparent" : Qt.rgba(1, 1, 1, 0.10)
           antialiasing: true
 
           Behavior on width {
@@ -1168,6 +1278,7 @@ Item {
               if (island.mode === "expanded") return
               if (mouseEvent.button === Qt.MiddleButton && island.primary === "music") { music.togglePlaying(); return }
               if (mouseEvent.button === Qt.RightButton) { island.openPage("home", "pointer"); return }
+              if (island.mode === "peek" && island.peekData.target === "invoke") { island.notifications.invokeLast(); island.collapse(); return }
               var target = island.mode === "peek" && island.peekData.target ? island.peekData.target : island.defaultPage()
               island.openPage(target, "pointer")
             }
@@ -1243,6 +1354,9 @@ Item {
                 case "permission": return permissionPage.implicitHeight
                 case "timer": return timerPage.implicitHeight
                 case "shelf": return shelfPage.implicitHeight
+                case "notifications": return notificationsPage.implicitHeight
+                case "stats": return statsPage.implicitHeight
+                case "controls": return controlsPage.implicitHeight
                 default: return homePage.implicitHeight
               }
             }
@@ -1253,6 +1367,9 @@ Item {
             PermissionPage { slide: island.pageSlide; id: permissionPage; island: island; width: parent.width; shown: pageStack.open && island.page === "permission" }
             TimerPage { slide: island.pageSlide; id: timerPage; island: island; width: parent.width; shown: pageStack.open && island.page === "timer" }
             ShelfPage { slide: island.pageSlide; id: shelfPage; island: island; width: parent.width; shown: pageStack.open && island.page === "shelf" }
+            NotificationsPage { slide: island.pageSlide; id: notificationsPage; island: island; width: parent.width; shown: pageStack.open && island.page === "notifications" }
+            StatsPage { slide: island.pageSlide; id: statsPage; island: island; width: parent.width; shown: pageStack.open && island.page === "stats" }
+            ControlsPage { slide: island.pageSlide; id: controlsPage; island: island; width: parent.width; shown: pageStack.open && island.page === "controls" }
           }
         }
 
@@ -1289,6 +1406,51 @@ Item {
         side: -1
         activity: island.tertiary
       }
+      // ------------------------------------------------------------ status marks
+      // Left of the island, whatever it shows: microphone (orange) and camera
+      // (green) in use, Caps Lock, Do Not Disturb (orange once something
+      // arrived meanwhile). Display only; clicks pass through.
+      Row {
+        id: marks
+        spacing: 7
+        x: Math.round((leftBubble.shown ? leftBubble.x : stage.x) - width - 10)
+        y: Math.round(island.topY + (island.compactH - height) / 2)
+        height: 16
+        opacity: island.introDone && !island.fullscreenHidden && island.mode === "compact" ? 1 : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Theme.ms(200) } }
+        Rectangle {
+          visible: island.privacy.mic
+          width: 7; height: 7; radius: 3.5
+          color: Theme.orange
+          anchors.verticalCenter: parent.verticalCenter
+          Accessible.role: Accessible.Indicator
+          Accessible.name: I18n.t("Mikrofon kullanımda")
+        }
+        Rectangle {
+          visible: island.privacy.camera
+          width: 7; height: 7; radius: 3.5
+          color: Theme.green
+          anchors.verticalCenter: parent.verticalCenter
+          Accessible.role: Accessible.Indicator
+          Accessible.name: I18n.t("Kamera kullanımda")
+        }
+        Icon {
+          visible: island.privacy.caps
+          name: "keyboard"
+          size: 16
+          color: Theme.orange
+          anchors.verticalCenter: parent.verticalCenter
+        }
+        Icon {
+          visible: island.notifications.dnd
+          name: "bell-off"
+          size: 15
+          color: island.notifications.unseen > 0 ? Theme.orange : Theme.secondary
+          anchors.verticalCenter: parent.verticalCenter
+        }
+      }
+
       Item { id: rightHit; x: rightBubble.x; y: rightBubble.y; width: rightBubble.width; height: rightBubble.height }
       Item { id: leftHit; x: leftBubble.x; y: leftBubble.y; width: leftBubble.width; height: leftBubble.height }
     }

@@ -11,3 +11,4 @@ Icon 1.0 Icon.qml
 Flag 1.0 Flag.qml
 ShimmerText 1.0 ShimmerText.qml
 singleton I18n 1.0 I18n.qml
+Sparkline 1.0 Sparkline.qml
